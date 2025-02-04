@@ -3,8 +3,8 @@
 <package format="3">
   <name>rail_robot</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="railrobot@todo.todo">railrobot</maintainer>
+  <description>Rail robot package that combines all other packages for simulation and deployment</description>
+  <maintainer email="akhanal7@gmu.edu">Abhish</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

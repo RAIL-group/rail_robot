@@ -1,1 +1,1 @@
-echo "# rail_robot" >> README.md
+# rail_robot"
