@@ -1,0 +1,15 @@
+[submodule "src/kobuki/kobuki_core"]
+	path = src/kobuki/kobuki_core
+	url = https://github.com/kobuki-base/kobuki_core.git
+[submodule "src/kobuki/kobuki_ros"]
+	path = src/kobuki/kobuki_ros
+	url = https://github.com/kobuki-base/kobuki_ros.git
+[submodule "src/kobuki/cmd_vel_mux"]
+	path = src/kobuki/cmd_vel_mux
+	url = https://github.com/kobuki-base/cmd_vel_mux.git
+[submodule "src/kobuki/ecl_core"]
+	path = src/kobuki/ecl_core
+	url = https://github.com/stonier/ecl_core.git
+[submodule "src/kobuki/ecl_lite"]
+	path = src/kobuki/ecl_lite
+	url = https://github.com/stonier/ecl_lite.git
