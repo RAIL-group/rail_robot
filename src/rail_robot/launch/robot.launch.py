@@ -8,6 +8,7 @@ from launch_ros.actions import Node
 import launch_ros.descriptions
 import xacro
 from launch.substitutions import Command
+from ament_index_python import get_package_prefix
 
 def generate_launch_description():
     kobuki_xacro_file = os.path.join(get_package_share_directory('kobuki_description'), 'urdf', 'kobuki_standalone.urdf.xacro')
@@ -21,6 +22,11 @@ def generate_launch_description():
         parameters=[{'robot_description': robot_description_raw,
         'use_sim_time': True}] # add other parameters here if required
     )
+    pkg_share_path = os.pathsep + os.path.join(get_package_prefix('kobuki_description'), 'share')
+    if 'GAZEBO_MODEL_PATH' in os.environ:
+        os.environ['GAZEBO_MODEL_PATH'] += pkg_share_path
+    else:
+        os.environ['GAZEBO_MODEL_PATH'] =  pkg_share_path
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
