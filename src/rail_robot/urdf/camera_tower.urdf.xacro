@@ -1,0 +1,49 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:macro name="camera_tower" params="*origin *inertial">
+
+    <joint name="camera_tower" type="fixed">
+      <xacro:insert_block name="origin"/>
+      <parent
+        link="base_link"/>
+      <child
+        link="camera_tower_link"/>
+    </joint>
+
+    <link name="camera_tower_link">
+      <visual>
+        <origin
+          rpy="0 0 0"
+          xyz="0 0 0"/>
+        <geometry>
+          <mesh
+            filename="package://rail_robot/meshes/locobot_meshes/kobuki_version/locobot_camera_tower_large.stl"
+            scale="${mesh_scale}"/>
+        </geometry>
+        <material name="interbotix_black"/>
+      </visual>
+      <collision>
+        <origin
+          rpy="0 0 0"
+          xyz="0 0 0"/>
+        <geometry>
+          <mesh
+            filename="package://rail_robot/meshes/locobot_meshes/kobuki_version/locobot_camera_tower_large_simple.stl"
+            scale="${mesh_scale}"/>
+        </geometry>
+      </collision>
+      <xacro:insert_block name="inertial"/>
+    </link>
+
+    <gazebo reference="camera_tower_link">
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+
+    <gazebo reference="camera_tower">
+      <disableFixedJointLumping>true</disableFixedJointLumping>
+    </gazebo>
+
+  </xacro:macro>
+
+</robot>

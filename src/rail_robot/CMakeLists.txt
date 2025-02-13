@@ -34,7 +34,7 @@ endif()
 
 
 install(
-  DIRECTORY launch
+  DIRECTORY launch urdf meshes media
   DESTINATION share/${PROJECT_NAME}
 )
 

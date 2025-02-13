@@ -3,16 +3,19 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-
 from launch_ros.actions import Node
-import launch_ros.descriptions
+from launch.actions import DeclareLaunchArgument
 import xacro
-from launch.substitutions import Command
+from launch.substitutions import LaunchConfiguration
 from ament_index_python import get_package_prefix
 
 def generate_launch_description():
-    kobuki_xacro_file = os.path.join(get_package_share_directory('kobuki_description'), 'urdf', 'kobuki_standalone.urdf.xacro')
-    robot_description_raw = xacro.process_file(kobuki_xacro_file).toxml()
+    robot_name_arg = DeclareLaunchArgument(
+        'robot_name', default_value='robot', description='Name of the robot'
+    )
+    # kobuki_xacro_file = os.path.join(get_package_share_directory('kobuki_description'), 'urdf', 'kobuki_standalone.urdf.xacro')
+    kobuki_xacro_file = os.path.join(get_package_share_directory('rail_robot'), 'urdf', 'rail_robot.urdf.xacro')
+    robot_description_raw = xacro.process_file(kobuki_xacro_file, mappings={'robot_name': 'robot'}).toxml()
 
     # configure the robot state publisher
     node_robot_state_publisher = Node(
@@ -22,11 +25,20 @@ def generate_launch_description():
         parameters=[{'robot_description': robot_description_raw,
         'use_sim_time': True}] # add other parameters here if required
     )
-    pkg_share_path = os.pathsep + os.path.join(get_package_prefix('kobuki_description'), 'share')
+    kobuki_pkg_share_path = os.pathsep + os.path.join(get_package_prefix('kobuki_description'), 'share')
+    locobot_pkg_share_path = os.pathsep + os.path.join(get_package_prefix('rail_robot'), 'share')
+
     if 'GAZEBO_MODEL_PATH' in os.environ:
-        os.environ['GAZEBO_MODEL_PATH'] += pkg_share_path
+        os.environ['GAZEBO_MODEL_PATH'] += kobuki_pkg_share_path
+        os.environ['GAZEBO_MODEL_PATH'] += locobot_pkg_share_path
     else:
-        os.environ['GAZEBO_MODEL_PATH'] =  pkg_share_path
+        os.environ['GAZEBO_MODEL_PATH'] =  kobuki_pkg_share_path
+        os.environ['GAZEBO_MODEL_PATH'] += locobot_pkg_share_path
+
+    if 'GAZEBO_MEDIA_PATH' in os.environ:
+        os.environ['GAZEBO_MEDIA_PATH'] += locobot_pkg_share_path
+    else:
+        os.environ['GAZEBO_MEDIA_PATH'] = locobot_pkg_share_path
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
@@ -53,6 +65,7 @@ def generate_launch_description():
                                             'base_footprint'])
 
     return LaunchDescription([
+        robot_name_arg,
         gazebo,
         node_robot_state_publisher,
         spawn_entity,
