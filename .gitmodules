@@ -13,3 +13,6 @@
 [submodule "src/kobuki/ecl_lite"]
 	path = src/kobuki/ecl_lite
 	url = https://github.com/stonier/ecl_lite.git
+[submodule "src/sllidar_ros2"]
+	path = src/sllidar_ros2
+	url = https://github.com/Slamtec/sllidar_ros2.git
