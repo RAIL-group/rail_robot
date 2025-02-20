@@ -1,17 +1,16 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>pano_camera</name>
+  <name>ricoh_theta_s_camera</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="railrobot@railrobot.com">railrobot</maintainer>
-  <license>Apache-2.0</license>
+  <license>TODO: License declaration</license>
 
   <depend>rclpy</depend>
   <depend>sensor_msgs</depend>
   <depend>cv_bridge</depend>
   <depend>vision_opencv</depend>
-  <depend>ament_cmake</depend>
 
   <export>
     <build_type>ament_python</build_type>
