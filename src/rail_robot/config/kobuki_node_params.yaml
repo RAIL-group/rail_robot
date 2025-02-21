@@ -10,5 +10,3 @@
     base_frame: $(var robot_name)/base_footprint
     publish_tf: true
     use_imu_heading: true
-    wheel_left_joint_name: wheel_left_joint
-    wheel_right_joint_name: wheel_right_joint
