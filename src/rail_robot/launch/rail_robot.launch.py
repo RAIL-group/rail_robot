@@ -45,7 +45,7 @@ def launch_setup(context, *args, **kwargs):
         namespace=robot_name_launch_arg,
         parameters=[{
             'robot_description': robot_description,
-            'use_sim_time': True,
+            'use_sim_time': False,
         }],
         output={'both': 'log'},
     )
@@ -65,7 +65,7 @@ def launch_setup(context, *args, **kwargs):
                          'serial_baudrate': 115200,
                          'frame_id': (robot_name_launch_arg, '/laser_frame_link'),
                          'inverted': False,
-                         'angle_compensate': False}])
+                         'angle_compensate': True}])
     slam_toolbox_node = Node(package='slam_toolbox',
                         executable='async_slam_toolbox_node',
                         name='slam_toolbox',
@@ -73,7 +73,7 @@ def launch_setup(context, *args, **kwargs):
                         namespace=robot_name_launch_arg,
                         parameters=[
                             slam_toolbox_parameter_file,
-                            {'use_sim_time': True}
+                            {'use_sim_time': False}
                         ],
                         remappings=[('/map', ('/', robot_name_launch_arg, '/map'))]
                         )
