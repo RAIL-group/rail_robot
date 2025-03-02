@@ -3,11 +3,13 @@
 set -e # Exit if a commands exists with a non-zero status
 
 # Install ros2 packages
-sudo apt-get update
-sudo apt-get install -y \
+sudo apt update
+sudo apt install -y \
     ros-humble-kobuki-ros-interfaces \
     ros-humble-kobuki-velocity-smoother \
-    ros-humble-sophus
+    ros-humble-sophus \
+    ros-humble-navigation2 \
+    ros-humble-nav2-bringup
 
 # clone required submodules from .gitmodules file
 git submodule update --init --recursive
