@@ -5,6 +5,7 @@ set -e # Exit if a commands exists with a non-zero status
 # Install ros2 packages
 sudo apt update
 sudo apt install -y \
+    openssh-server \
     ros-humble-kobuki-ros-interfaces \
     ros-humble-kobuki-velocity-smoother \
     ros-humble-sophus \
