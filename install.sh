@@ -15,6 +15,7 @@ sudo apt install -y \
 git submodule update --init --recursive
 
 # Install dependencies
+rosdep init
 rosdep update
 rosdep install -i --from-path src --rosdistro humble -y
 
