@@ -19,6 +19,11 @@ rosdep init
 rosdep update
 rosdep install -i --from-path src --rosdistro humble -y
 
+# Copy udev rules
+sudo cp ./udev/* /etc/udev/rules.d
+sudo service udev reload
+sudo service udev restart
+
 # Install
 colcon build --symlink-install
 echo "Installation complete"
