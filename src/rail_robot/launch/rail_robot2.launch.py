@@ -81,7 +81,7 @@ def launch_setup(context, *args, **kwargs):
                         )
 
     return [
-        # robot_state_publisher_node,
+        robot_state_publisher_node,
         kobuki_ros_node,
         sllidar_node,
         slam_toolbox_node
