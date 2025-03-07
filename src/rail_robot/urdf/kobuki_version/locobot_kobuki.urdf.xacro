@@ -110,7 +110,7 @@
       link="${robot_name}/wheel_left_link"/>
   </joint>
 
-  <!-- <xacro:if value="${hardware_type == 'gz_classic'}">
+  <xacro:if value="${hardware_type == 'gz_classic'}">
     <ros2_control name="wheel_left_joint_controller" type="system">
       <hardware>
         <plugin>gazebo_ros2_control/GazeboSystem</plugin>
@@ -121,7 +121,7 @@
         <command_interface name="velocity" />
       </joint>
     </ros2_control>
-  </xacro:if> -->
+  </xacro:if>
 
   <link name="${robot_name}/wheel_left_link">
     <visual>
@@ -177,7 +177,7 @@
       link="${robot_name}/wheel_right_link"/>
   </joint>
 
-  <!-- <xacro:if value="${hardware_type == 'gz_classic'}">
+  <xacro:if value="${hardware_type == 'gz_classic'}">
     <ros2_control name="wheel_right_joint_controller" type="system">
       <hardware>
         <plugin>gazebo_ros2_control/GazeboSystem</plugin>
@@ -188,7 +188,7 @@
         <command_interface name="velocity" />
       </joint>
     </ros2_control>
-  </xacro:if> -->
+  </xacro:if>
 
   <link name="${robot_name}/wheel_right_link">
     <visual>
@@ -526,7 +526,7 @@
 
   <!-- Plugins -->
 
-  <!-- <gazebo>
+  <gazebo>
     <xacro:if value="${hardware_type == 'gz_classic'}">
       <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
         <ros>
@@ -534,17 +534,17 @@
         </ros>
         <robot_param>robot_description</robot_param>
         <robot_param_node>robot_state_publisher</robot_param_node>
-        <parameters> $(find interbotix_xslocobot_sim)/config/kobuki_version/$(arg robot_model)_controllers.yaml </parameters>
+        <parameters> $(find rail_robot)/config/ros2_control_sim.yaml </parameters>
       </plugin>
     </xacro:if>
 
     <xacro:if value="${hardware_type == 'gz_ignition'}">
       <plugin filename="ign_ros2_control-system" name="ign_ros2_control::IgnitionROS2ControlPlugin">
-        <parameters> $(find interbotix_xslocobot_sim)/config/kobuki_version/$(arg robot_model)_controllers.yaml </parameters>
+        <parameters> $(find interbotix_xslocobot_sim)/config/ros2_control_sim.yaml </parameters>
       </plugin>
     </xacro:if>
 
-    <plugin filename="libgazebo_ros_p3d.so" name="p3d_base_controller">
+    <!-- <plugin filename="libgazebo_ros_p3d.so" name="p3d_base_controller">
       <ros>
         <remapping>odom:=sim_ground_truth_pose</remapping>
         <namespace>/$(arg robot_name)</namespace>
@@ -555,7 +555,7 @@
       <xyz_offset>0 0 0</xyz_offset>
       <rpy_offset>0.0 0.0 0.0</rpy_offset>
       <gaussian_noise>0</gaussian_noise>
-    </plugin>
-  </gazebo> -->
+    </plugin> -->
+  </gazebo>
 
 </robot>

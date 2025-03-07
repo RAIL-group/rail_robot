@@ -2,7 +2,10 @@
 <robot name="rail_robot" xmlns:xacro="http://ros.org/wiki/xacro">
 
   <xacro:arg name="robot_name"            default=""/>
+  <xacro:arg name="hardware_type"         default="gz_classic"/>
+
   <xacro:property name="robot_name" value="$(arg robot_name)"/>
+  <xacro:property name="hardware_type"    value="$(arg hardware_type)"/>
 
   <material name="interbotix_black">
     <texture filename="package://rail_robot/media/materials/textures/interbotix_black.png"/>

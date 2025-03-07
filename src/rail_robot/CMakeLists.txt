@@ -34,7 +34,7 @@ endif()
 
 # Install launch files.
 install(DIRECTORY
-  launch urdf meshes media config
+  launch urdf meshes media config worlds
   DESTINATION share/${PROJECT_NAME}/
 )
 
