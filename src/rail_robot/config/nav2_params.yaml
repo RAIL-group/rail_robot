@@ -20,10 +20,10 @@ bt_navigator:
     global_frame: map
 
     # Path to behavior tree XML description. (default: base_link)
-    robot_base_frame: base_link
+    robot_base_frame: robot/base_link
 
     # Topic on which odometry is published. (default: odom)
-    odom_topic: /odom
+    odom_topic: /robot/odom
 
     # Duration (in milliseconds) for each iteration of BT execution. (default: 10)
     bt_loop_duration: 10
@@ -145,7 +145,7 @@ controller_server:
     # (default: "speed_limit") speed_limit_topic: "speed_limit" # UNUSED
 
     # Topic to get instantaneous measurement of speed from. (default: "odom")
-    odom_topic: "/odom"
+    odom_topic: "/robot/odom"
 
     # Mapped name for progress checker plugin for checking progress made by robot. (default:
     # "progress_checker")
@@ -444,10 +444,10 @@ local_costmap:
       publish_frequency: 2.0
 
       # Reference frame. (default: odom)
-      global_frame: odom
+      global_frame: robot/odom
 
       # Robot base frame. (default: base_link)
-      robot_base_frame: base_link
+      robot_base_frame: robot/base_link
 
       # Whether costmap should roll with robot base frame. (default: False)
       rolling_window: True
@@ -503,7 +503,7 @@ local_costmap:
 
         scan:
           # Topic of data.
-          topic: /scan
+          topic: /robot/scan
 
           # Frame of sensor, to use if not provided by message. If empty, uses message frame_id.
           sensor_frame: ""
@@ -578,7 +578,7 @@ global_costmap:
       lethal_cost_threshold: 100
 
       # Topic of map from map_server or SLAM. (default: map)
-      map_topic: map
+      map_topic: /robot/map
 
       # X origin of the costmap relative to width (m). (default: 0.0)
       origin_x: -10.0
@@ -599,7 +599,7 @@ global_costmap:
       resolution: 0.1
 
       # Robot base frame. (default: base_link)
-      robot_base_frame: base_link
+      robot_base_frame: robot/base_link
 
       # Robot radius to use, if footprint coordinates not provided. (default: 0.1)
       robot_radius: 0.25
@@ -663,7 +663,7 @@ global_costmap:
 
         scan:
           # Topic of data.
-          topic: /scan
+          topic: /robot/scan
 
           # Frame of sensor, to use if not provided by message. If empty, uses message frame_id.
           sensor_frame: ""
@@ -813,10 +813,10 @@ behavior_server:
     transform_tolerance: 0.1
 
     # Reference frame. (default: odom)
-    global_frame: odom
+    global_frame: robot/odom
 
     # Robot base frame. (default: base_link)
-    robot_base_frame: base_link
+    robot_base_frame: robot/base_link
 
     # List of plugin names to use, also matches action server names. Note: Each plugin namespace
     # defined in this list needs to have a plugin parameter defining the type of plugin to be
@@ -880,6 +880,13 @@ collision_monitor:
   ros__parameters:
     observation_sources: ['laser_scan']
     laser_scan:
-      topic: /scan  # Replace with the correct topic for your laser scanner
-      sensor_frame: laser_frame_link  # Replace with your sensor's frame if needed
+      topic: /robot/scan  # Replace with the correct topic for your laser scanner
+      sensor_frame: robot/laser_frame_link  # Replace with your sensor's frame if needed
       data_type: LaserScan
+
+# map_server:
+#   ros__parameters:
+#     use_sim_time: True
+#     # Overridden in launch by the "map" launch configuration or provided default value.
+#     # To use in yaml, remove the default "map" value in the tb3_simulation_launch.py file & provide full path to map below.
+#     yaml_filename: ""
