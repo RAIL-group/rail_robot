@@ -17,6 +17,7 @@ from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 from pathlib import Path
+from launch.conditions import LaunchConfigurationEquals
 
 
 def launch_setup(context, *args, **kwargs):
@@ -24,108 +25,48 @@ def launch_setup(context, *args, **kwargs):
     use_rviz_launch_arg = LaunchConfiguration('use_rviz')
     world_filepath_launch_arg = LaunchConfiguration('world_filepath')
     hardware_type_launch_arg = LaunchConfiguration('hardware_type')
+    slam_mode_launch_arg = LaunchConfiguration('slam_mode')
 
-    # Setup necessary environment variables for Gazebo, otherwise robot won't load in gazebo
-    gz_model_path_env_var = SetEnvironmentVariable(
-        name='GAZEBO_MODEL_PATH',
-        value=[
-            EnvironmentVariable('GAZEBO_MODEL_PATH', default_value=''),
-            '/usr/share/gazebo-11/models/',
-            ':',
-            str(Path(
-                FindPackageShare('rail_robot').perform(context)
-            ).parent.resolve()),
-        ]
-    )
-    gz_media_path_env_var = SetEnvironmentVariable(
-        name='GAZEBO_MEDIA_PATH',
-        value=[
-            EnvironmentVariable('GAZEBO_MEDIA_PATH', default_value=''),
-            ':',
-            str(Path(
-                FindPackageShare('rail_robot').perform(context)
-            ).parent.resolve()),
-        ]
-    )
-
-
-    gazebo_launch_include = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([
-            PathJoinSubstitution([
-                FindPackageShare('gazebo_ros'),
-                'launch',
-                'gazebo.launch.py'
-            ]),
-        ]),
-        launch_arguments={
-            'world': world_filepath_launch_arg,
-        }.items(),
-    )
-
-    spawn_robot_node = Node(
-        package='gazebo_ros',
-        executable='spawn_entity.py',
-        name='spawn_robot',
-        namespace=robot_name_launch_arg,
-        arguments=[
-            '-entity', 'robot_description',
-            '-topic', 'robot_description',
-            '-x', '0.0',
-            '-y', '0.0',
-            '-z', '0.0',
-            '-Y', '0.0',
-        ],
-        output={'both': 'log'},
-    )
-
-    spawn_joint_state_broadcaster_node = Node(
-        name='joint_state_broadcaster_spawner',
-        package='controller_manager',
-        executable='spawner',
-        arguments=[
-            '-c',
-            f'{robot_name_launch_arg.perform(context)}/controller_manager',
-            'joint_state_broadcaster',
-        ],
-    )
-
-    spawn_diffdrive_controller_node = Node(
-        name='diffdrive_controller_spawner',
-        package='controller_manager',
-        executable='spawner',
-        arguments=[
-            '-c',
-            [LaunchConfiguration('robot_name'), TextSubstitution(text='/controller_manager')],
-            'diffdrive_controller',
-
-        ],
-    )
-
+    # Robot Description
     rail_robot_description_launch_include = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
                 FindPackageShare('rail_robot'),
                 'launch',
-                'rail_robot_description.launch.py'
+                'rail_robot_simulation.launch.py'
             ])
         ]),
         launch_arguments={
             'robot_name': robot_name_launch_arg,
             'use_rviz': use_rviz_launch_arg,
-            'use_sim_time': 'true',
+            'world_filepath': world_filepath_launch_arg,
             'hardware_type': hardware_type_launch_arg,
         }.items(),
     )
 
+    # SLAM
+    rail_robot_slam_launch_include = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'launch',
+                'rail_robot_slam.launch.py'
+            ])
+        ]),
+        launch_arguments={
+            'robot_name': robot_name_launch_arg,
+        }.items(),
+        condition = LaunchConfigurationEquals(
+            launch_configuration_name='slam_mode',
+            expected_value='slam'
+        )
+    )
+
+    # Navigation and Localization
 
     return [
-        gz_model_path_env_var,
-        gz_media_path_env_var,
-        gazebo_launch_include,
-        spawn_robot_node,
-        spawn_joint_state_broadcaster_node,
-        spawn_diffdrive_controller_node,
         rail_robot_description_launch_include,
+        rail_robot_slam_launch_include,
     ]
 
 
@@ -160,6 +101,15 @@ def generate_launch_description():
                                ),
                               default_value='gz_classic',
                               description='Type of hardware interface to use')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument('slam_mode',
+                               choices=(
+                                    'localization',
+                                    'slam',
+                               ),
+                              default_value='slam',
+                              description='Whether to run in localization or SLAM mode')
     )
     return launch.LaunchDescription(
         declared_arguments + [OpaqueFunction(function=launch_setup)])
