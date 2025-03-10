@@ -44,7 +44,7 @@ bt_navigator:
   ros__parameters:
     use_sim_time: True
     global_frame: map
-    robot_base_frame: base_link
+    robot_base_frame: robot/base_link
     odom_topic: /odom
     bt_loop_duration: 10
     default_server_timeout: 20
@@ -176,7 +176,8 @@ local_costmap:
   local_costmap:
     ros__parameters:
       use_sim_time: True
-      global_frame: odom
+      robot_base_frame: robot/base_link
+      global_frame: robot/odom
       rolling_window: true
       width: 3
       height: 3
@@ -198,7 +199,7 @@ local_costmap:
         mark_threshold: 0
         observation_sources: scan
         scan:
-          topic: /robot1/scan
+          topic: scan
           max_obstacle_height: 2.0
           clearing: True
           marking: True
@@ -215,6 +216,7 @@ global_costmap:
   global_costmap:
     ros__parameters:
       use_sim_time: True
+      robot_base_frame: robot/base_link
       robot_radius: 0.22
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
       obstacle_layer:
@@ -222,7 +224,7 @@ global_costmap:
         enabled: True
         observation_sources: scan
         scan:
-          topic: /robot1/scan
+          topic: scan
           max_obstacle_height: 2.0
           clearing: True
           marking: True
@@ -276,8 +278,8 @@ behavior_server:
       plugin: "nav2_behaviors/DriveOnHeading"
     wait:
       plugin: "nav2_behaviors/Wait"
-    global_frame: odom
-    robot_base_frame: base_link
+    global_frame: robot/odom
+    robot_base_frame: robot/base_link
     transform_tolerance: 0.1
     use_sim_time: true
     simulate_ahead_time: 2.0
