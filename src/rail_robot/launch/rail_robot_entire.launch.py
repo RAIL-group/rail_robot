@@ -1,9 +1,10 @@
 import launch
-from launch_ros.actions import Node
+from launch_ros.actions import Node, PushRosNamespace
 from launch.actions import (
     IncludeLaunchDescription,
     DeclareLaunchArgument,
     OpaqueFunction,
+    GroupAction,
     SetEnvironmentVariable,
     RegisterEventHandler,
 )
@@ -26,8 +27,13 @@ def launch_setup(context, *args, **kwargs):
     world_filepath_launch_arg = LaunchConfiguration('world_filepath')
     hardware_type_launch_arg = LaunchConfiguration('hardware_type')
     slam_mode_launch_arg = LaunchConfiguration('slam_mode')
+    map_yaml_file_launch_arg = LaunchConfiguration('map')
+    autostart_launch_arg = LaunchConfiguration('autostart')
+    params_file_launch_arg = LaunchConfiguration('params_file')
+    use_respawn_launch_arg = LaunchConfiguration('use_respawn')
 
-    # Robot Description
+
+    # Gazebo simulation
     rail_robot_description_launch_include = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
@@ -63,10 +69,28 @@ def launch_setup(context, *args, **kwargs):
     )
 
     # Navigation and Localization
+    # Specify the actions
+    bringup_cmd_group = GroupAction([
+        PushRosNamespace(
+            namespace=robot_name_launch_arg),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'launch',
+                'rail_robot_localization.launch.py'])),
+            launch_arguments={'namespace': robot_name_launch_arg,
+                              'map': map_yaml_file_launch_arg,
+                              'use_sim_time': 'true',
+                              'autostart': autostart_launch_arg,
+                              'params_file': params_file_launch_arg,
+                              'use_respawn': use_respawn_launch_arg}.items()),
+    ])
 
     return [
         rail_robot_description_launch_include,
         rail_robot_slam_launch_include,
+        bringup_cmd_group,
     ]
 
 
@@ -111,5 +135,31 @@ def generate_launch_description():
                               default_value='slam',
                               description='Whether to run in localization or SLAM mode')
     )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+        'map',
+        description='Full path to map yaml file to load')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+        'params_file',
+        default_value=PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'config',
+                'nav2_params.yaml'
+        ]),
+        description='Full path to the ROS2 parameters file to use for all launched nodes')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+        'autostart', default_value='true',
+        description='Automatically startup the nav2 stack')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+        'use_respawn', default_value='False',
+        description='Whether to respawn if a node crashes.')
+    )
+
     return launch.LaunchDescription(
         declared_arguments + [OpaqueFunction(function=launch_setup)])

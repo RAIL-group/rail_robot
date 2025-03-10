@@ -12,6 +12,7 @@ def launch_setup(context, *args, **kwargs):
     use_rviz_launch_arg = LaunchConfiguration('use_rviz')
     hardware_type_launch_arg = LaunchConfiguration('hardware_type')
 
+
     robot_description = Command([
             'sh -c "',
             FindExecutable(name='xacro'), ' ',
@@ -49,6 +50,9 @@ def launch_setup(context, *args, **kwargs):
             'use_sim_time': use_sim_time_launch_arg,
         }],
         output={'both': 'log'},
+        remappings=[('/goal_pose', 'goal_pose'),
+                    ('/clicked_point', 'clicked_point'),
+                    ('/initialpose', 'initialpose')]
     )
 
     return [
