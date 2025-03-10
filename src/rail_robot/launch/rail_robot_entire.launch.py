@@ -70,7 +70,7 @@ def launch_setup(context, *args, **kwargs):
 
     # Navigation and Localization
     # Specify the actions
-    bringup_cmd_group = GroupAction([
+    localization_group = GroupAction([
         PushRosNamespace(
             namespace=robot_name_launch_arg),
 
@@ -79,8 +79,8 @@ def launch_setup(context, *args, **kwargs):
                 FindPackageShare('rail_robot'),
                 'launch',
                 'rail_robot_localization.launch.py'])),
-            launch_arguments={'namespace': robot_name_launch_arg,
-                              'map': map_yaml_file_launch_arg,
+            launch_arguments={'robot_name': robot_name_launch_arg,
+                              'map_yaml_file': map_yaml_file_launch_arg,
                               'use_sim_time': 'true',
                               'autostart': autostart_launch_arg,
                               'params_file': params_file_launch_arg,
@@ -90,7 +90,7 @@ def launch_setup(context, *args, **kwargs):
     return [
         rail_robot_description_launch_include,
         rail_robot_slam_launch_include,
-        bringup_cmd_group,
+        localization_group,
     ]
 
 
@@ -146,7 +146,7 @@ def generate_launch_description():
         default_value=PathJoinSubstitution([
                 FindPackageShare('rail_robot'),
                 'config',
-                'nav2_params.yaml'
+                'nav2_params_official.yaml'
         ]),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
     )
