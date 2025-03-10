@@ -23,14 +23,19 @@ from nav2_common.launch import RewrittenYaml
 
 def launch_setup(context, *args, **kwargs):
     robot_name_launch_arg = LaunchConfiguration('robot_name')
-    map_yaml_file_launch_arg = LaunchConfiguration('map')
     use_sim_time_launch_arg = LaunchConfiguration('use_sim_time')
     params_file_launch_arg = LaunchConfiguration('params_file')
     autostart_launch_arg = LaunchConfiguration('autostart')
     use_respawn_launch_arg = LaunchConfiguration('use_respawn')
     log_level_launch_arg = LaunchConfiguration('log_level')
 
-    lifecycle_nodes = ['map_server', 'amcl']
+    lifecycle_nodes = ['controller_server',
+                       'smoother_server',
+                       'planner_server',
+                       'behavior_server',
+                       'bt_navigator',
+                       'waypoint_follower',
+                       'velocity_smoother']
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
     # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
@@ -38,13 +43,16 @@ def launch_setup(context, *args, **kwargs):
     # https://github.com/ros/robot_state_publisher/pull/30
     # TODO(orduno) Substitute with `PushNodeRemapping`
     #              https://github.com/ros2/launch_ros/issues/56
-    # remappings = [('/tf', 'tf'),
-    #               ('/tf_static', 'tf_static')]
-    remappings = []
+    remappings = [
+        # ('/cmd_vel', 'commands/velocity'),
+        ('cmd_vel', 'diffdrive_controller/cmd_vel_unstamped'),
+        ('cmd_vel_smoothed', 'cmd_vel')
+    ]
 
     # Create our own temporary YAML files that include substitutions
     param_substitutions = {
         'use_sim_time': use_sim_time_launch_arg,
+        # 'autostart': autostart_launch_arg
     }
 
     configured_params = ParameterFile(
@@ -55,28 +63,75 @@ def launch_setup(context, *args, **kwargs):
             convert_types=True),
         allow_substs=True)
 
+
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
 
     load_nodes = GroupAction(
         actions=[
             Node(
-                package='nav2_map_server',
-                executable='map_server',
-                name='map_server',
+                package='nav2_controller',
+                executable='controller_server',
                 output='screen',
                 respawn=use_respawn_launch_arg,
                 respawn_delay=2.0,
-                parameters=[
-                    configured_params,
-                    {'yaml_filename': map_yaml_file_launch_arg},
-                ],
+                parameters=[configured_params],
                 arguments=['--ros-args', '--log-level', log_level_launch_arg],
                 remappings=remappings),
             Node(
-                package='nav2_amcl',
-                executable='amcl',
-                name='amcl',
+                package='nav2_smoother',
+                executable='smoother_server',
+                name='smoother_server',
+                output='screen',
+                respawn=use_respawn_launch_arg,
+                respawn_delay=2.0,
+                parameters=[configured_params],
+                arguments=['--ros-args', '--log-level', log_level_launch_arg],
+                remappings=remappings),
+            Node(
+                package='nav2_planner',
+                executable='planner_server',
+                name='planner_server',
+                output='screen',
+                respawn=use_respawn_launch_arg,
+                respawn_delay=2.0,
+                parameters=[configured_params],
+                arguments=['--ros-args', '--log-level', log_level_launch_arg],
+                remappings=remappings),
+            Node(
+                package='nav2_behaviors',
+                executable='behavior_server',
+                name='behavior_server',
+                output='screen',
+                respawn=use_respawn_launch_arg,
+                respawn_delay=2.0,
+                parameters=[configured_params],
+                arguments=['--ros-args', '--log-level', log_level_launch_arg],
+                remappings=remappings),
+            Node(
+                package='nav2_bt_navigator',
+                executable='bt_navigator',
+                name='bt_navigator',
+                output='screen',
+                respawn=use_respawn_launch_arg,
+                respawn_delay=2.0,
+                parameters=[configured_params],
+                arguments=['--ros-args', '--log-level', log_level_launch_arg],
+                remappings=remappings),
+            Node(
+                package='nav2_waypoint_follower',
+                executable='waypoint_follower',
+                name='waypoint_follower',
+                output='screen',
+                respawn=use_respawn_launch_arg,
+                respawn_delay=2.0,
+                parameters=[configured_params],
+                arguments=['--ros-args', '--log-level', log_level_launch_arg],
+                remappings=remappings),
+            Node(
+                package='nav2_velocity_smoother',
+                executable='velocity_smoother',
+                name='velocity_smoother',
                 output='screen',
                 respawn=use_respawn_launch_arg,
                 respawn_delay=2.0,
@@ -86,18 +141,19 @@ def launch_setup(context, *args, **kwargs):
             Node(
                 package='nav2_lifecycle_manager',
                 executable='lifecycle_manager',
-                name='lifecycle_manager_localization',
+                name='lifecycle_manager_navigation',
                 output='screen',
                 arguments=['--ros-args', '--log-level', log_level_launch_arg],
-                parameters=[{'autostart': autostart_launch_arg},
-                            {'node_names': lifecycle_nodes}])
+                parameters=[{'use_sim_time': use_sim_time_launch_arg},
+                            {'autostart': autostart_launch_arg},
+                            {'node_names': lifecycle_nodes}]),
         ]
     )
-
     return [
         stdout_linebuf_envvar,
         load_nodes
     ]
+
 
 def generate_launch_description():
     declared_arguments = []

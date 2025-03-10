@@ -87,10 +87,27 @@ def launch_setup(context, *args, **kwargs):
                               'use_respawn': use_respawn_launch_arg}.items()),
     ])
 
+    navigation_group = GroupAction([
+        PushRosNamespace(
+            namespace=robot_name_launch_arg),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'launch',
+                'rail_robot_navigation.launch.py'])),
+            launch_arguments={'robot_name': robot_name_launch_arg,
+                              'use_sim_time': 'true',
+                              'autostart': autostart_launch_arg,
+                              'params_file': params_file_launch_arg,
+                              'use_respawn': use_respawn_launch_arg}.items()),
+    ])
+
     return [
         rail_robot_description_launch_include,
         rail_robot_slam_launch_include,
         localization_group,
+        navigation_group
     ]
 
 
