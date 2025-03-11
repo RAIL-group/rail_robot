@@ -5,19 +5,14 @@ from launch.actions import (
     DeclareLaunchArgument,
     OpaqueFunction,
     GroupAction,
-    SetEnvironmentVariable,
-    RegisterEventHandler,
+    SetLaunchConfiguration,
 )
 from launch.substitutions import (
     LaunchConfiguration,
     PathJoinSubstitution,
-    EnvironmentVariable,
-    TextSubstitution
 )
-from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
-from pathlib import Path
 from launch.conditions import LaunchConfigurationEquals
 
 
@@ -26,15 +21,51 @@ def launch_setup(context, *args, **kwargs):
     use_rviz_launch_arg = LaunchConfiguration('use_rviz')
     world_filepath_launch_arg = LaunchConfiguration('world_filepath')
     hardware_type_launch_arg = LaunchConfiguration('hardware_type')
-    slam_mode_launch_arg = LaunchConfiguration('slam_mode')
+    use_sim_time_launch_arg = LaunchConfiguration('use_sim_time')
     map_yaml_file_launch_arg = LaunchConfiguration('map')
     autostart_launch_arg = LaunchConfiguration('autostart')
     params_file_launch_arg = LaunchConfiguration('params_file')
     use_respawn_launch_arg = LaunchConfiguration('use_respawn')
 
+    SetLaunchConfiguration(
+        'use_sim_time',
+        value='true' if LaunchConfigurationEquals('hardware_type', 'gz_classic') else 'false'
+    )
 
-    # Gazebo simulation
+    # Robot description launch
     rail_robot_description_launch_include = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'launch',
+                'rail_robot_description.launch.py'
+            ])
+        ]),
+        launch_arguments={
+            'robot_name': robot_name_launch_arg,
+            'use_rviz': use_rviz_launch_arg,
+            'use_sim_time': use_sim_time_launch_arg,
+            'hardware_type': hardware_type_launch_arg,
+        }.items(),
+    )
+
+    # Physical Hardware
+    rail_robot_hardware_launch_include =IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'launch',
+                'rail_robot_hardware.launch.py'
+            ])
+        ]),
+        launch_arguments={
+            'robot_name': robot_name_launch_arg,
+        }.items(),
+        condition=LaunchConfigurationEquals('hardware_type', 'actual')
+    )
+
+    # GZ simulation
+    rail_robot_simulation_launch_include = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
                 FindPackageShare('rail_robot'),
@@ -48,6 +79,7 @@ def launch_setup(context, *args, **kwargs):
             'world_filepath': world_filepath_launch_arg,
             'hardware_type': hardware_type_launch_arg,
         }.items(),
+        condition=LaunchConfigurationEquals('hardware_type', 'gz_classic')
     )
 
     # SLAM
@@ -62,14 +94,11 @@ def launch_setup(context, *args, **kwargs):
         launch_arguments={
             'robot_name': robot_name_launch_arg,
         }.items(),
-        condition = LaunchConfigurationEquals(
-            launch_configuration_name='slam_mode',
-            expected_value='slam'
-        )
+        condition=LaunchConfigurationEquals('slam_mode', 'slam')
     )
 
     # Navigation and Localization
-    rail_robot_navigation_group = GroupAction([
+    rail_robot_navigation_group_include = GroupAction([
         PushRosNamespace(
             namespace=robot_name_launch_arg),
 
@@ -81,14 +110,11 @@ def launch_setup(context, *args, **kwargs):
                 'rail_robot_localization.launch.py'])),
             launch_arguments={'robot_name': robot_name_launch_arg,
                               'map_yaml_file': map_yaml_file_launch_arg,
-                              'use_sim_time': 'true',
+                              'use_sim_time': use_sim_time_launch_arg,
                               'autostart': autostart_launch_arg,
                               'params_file': params_file_launch_arg,
                               'use_respawn': use_respawn_launch_arg}.items(),
-            condition = LaunchConfigurationEquals(
-                launch_configuration_name='slam_mode',
-                expected_value='localization'
-            )
+            condition=LaunchConfigurationEquals('slam_mode', 'localization')
         ),
 
         # Navigation
@@ -98,7 +124,7 @@ def launch_setup(context, *args, **kwargs):
                 'launch',
                 'rail_robot_navigation.launch.py'])),
             launch_arguments={'robot_name': robot_name_launch_arg,
-                              'use_sim_time': 'true',
+                              'use_sim_time': use_sim_time_launch_arg,
                               'autostart': autostart_launch_arg,
                               'params_file': params_file_launch_arg,
                               'use_respawn': use_respawn_launch_arg}.items()
@@ -108,8 +134,10 @@ def launch_setup(context, *args, **kwargs):
 
     return [
         rail_robot_description_launch_include,
+        rail_robot_simulation_launch_include,
+        rail_robot_hardware_launch_include,
         rail_robot_slam_launch_include,
-        rail_robot_navigation_group
+        rail_robot_navigation_group_include,
     ]
 
 
@@ -145,6 +173,12 @@ def generate_launch_description():
                               default_value='gz_classic',
                               description='Type of hardware interface to use')
     )
+    declared_arguments.append(
+        DeclareLaunchArgument('use_sim_time',
+                              default_value='false',
+                              description='Use simulation time')
+    )
+
     declared_arguments.append(
         DeclareLaunchArgument('slam_mode',
                                choices=(
