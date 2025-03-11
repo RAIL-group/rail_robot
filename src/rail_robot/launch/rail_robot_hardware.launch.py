@@ -17,44 +17,14 @@ def launch_setup(context, *args, **kwargs):
         ]),
         allow_substs=True,
     )
-    slam_toolbox_parameter_file = ParameterFile(
-        param_file=PathJoinSubstitution([
-            FindPackageShare('rail_robot'),
-            'config',
-            'slam_toolbox_online_async.yaml',
-        ]),
-        allow_substs=True,
-    )
-    robot_description = Command([
-            'sh -c "',
-            FindExecutable(name='xacro'), ' ',
-            PathJoinSubstitution([
-                FindPackageShare('rail_robot'),
-                'urdf',
-                'rail_robot.urdf.xacro'
-            ]), ' ',
-            'robot_name:=', robot_name_launch_arg, ' ',
-            # Stripping comments from the URDF is necessary for gazebo_ros2_control to parse the
-            # robot_description parameter override
-            '| ', FindExecutable(name='perl'), ' -0777 -pe \'s/<!--.*?-->//gs\'"'
-        ])
-
-    robot_state_publisher_node = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        namespace=robot_name_launch_arg,
-        parameters=[{
-            'robot_description': robot_description,
-            'use_sim_time': False,
-        }],
-        output={'both': 'log'},
-    )
+    
     kobuki_ros_node = Node(package='kobuki_node',
                            executable='kobuki_ros_node',
                            name='kobuki_ros_node',
                            output='both',
                            namespace=robot_name_launch_arg,
                            parameters=[kobuki_ros_node_parameter_file])
+
     sllidar_node = Node(package='sllidar_ros2',
                       executable='sllidar_node',
                       name='sllidar_node',
@@ -66,23 +36,10 @@ def launch_setup(context, *args, **kwargs):
                          'frame_id': (robot_name_launch_arg, '/laser_frame_link'),
                          'inverted': False,
                          'angle_compensate': True}])
-    slam_toolbox_node = Node(package='slam_toolbox',
-                        executable='async_slam_toolbox_node',
-                        name='slam_toolbox',
-                        output='screen',
-                        namespace=robot_name_launch_arg,
-                        parameters=[
-                            slam_toolbox_parameter_file,
-                            {'use_sim_time': False}
-                        ],
-                        remappings=[('/map', ('/', robot_name_launch_arg, '/map'))]
-                        )
 
     return [
-        robot_state_publisher_node,
         kobuki_ros_node,
         sllidar_node,
-        slam_toolbox_node
     ]
 
 
