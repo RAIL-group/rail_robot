@@ -39,7 +39,7 @@
         odom_frame: $(var robot_name)/odom
 
         # Map frame
-        map_frame: $(var robot_name)/map
+        map_frame: map
 
         # Base frame
         base_frame: $(var robot_name)/base_footprint
