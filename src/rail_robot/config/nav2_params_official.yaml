@@ -6,7 +6,7 @@ amcl:
     alpha3: 0.2
     alpha4: 0.2
     alpha5: 0.2
-    base_frame_id: "robot/base_footprint"
+    base_frame_id: "$(var robot_name)/base_footprint"
     beam_skip_distance: 0.5
     beam_skip_error_threshold: 0.9
     beam_skip_threshold: 0.3
@@ -20,7 +20,7 @@ amcl:
     max_beams: 60
     max_particles: 2000
     min_particles: 500
-    odom_frame_id: "robot/odom"
+    odom_frame_id: "$(var robot_name)/odom"
     pf_err: 0.05
     pf_z: 0.99
     recovery_alpha_fast: 0.0
@@ -44,7 +44,7 @@ bt_navigator:
   ros__parameters:
     use_sim_time: True
     global_frame: map
-    robot_base_frame: robot/base_link
+    robot_base_frame: $(var robot_name)/base_link
     odom_topic: /odom
     bt_loop_duration: 10
     default_server_timeout: 20
@@ -176,8 +176,8 @@ local_costmap:
   local_costmap:
     ros__parameters:
       use_sim_time: True
-      robot_base_frame: robot/base_link
-      global_frame: robot/odom
+      robot_base_frame: $(var robot_name)/base_link
+      global_frame: $(var robot_name)/odom
       rolling_window: true
       width: 3
       height: 3
@@ -216,7 +216,7 @@ global_costmap:
   global_costmap:
     ros__parameters:
       use_sim_time: True
-      robot_base_frame: robot/base_link
+      robot_base_frame: $(var robot_name)/base_link
       robot_radius: 0.22
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
       obstacle_layer:
@@ -278,8 +278,8 @@ behavior_server:
       plugin: "nav2_behaviors/DriveOnHeading"
     wait:
       plugin: "nav2_behaviors/Wait"
-    global_frame: robot/odom
-    robot_base_frame: robot/base_link
+    global_frame: $(var robot_name)/odom
+    robot_base_frame: $(var robot_name)/base_link
     transform_tolerance: 0.1
     use_sim_time: true
     simulate_ahead_time: 2.0

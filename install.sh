@@ -10,7 +10,8 @@ sudo apt install -y \
     ros-humble-kobuki-velocity-smoother \
     ros-humble-sophus \
     ros-humble-navigation2 \
-    ros-humble-nav2-bringup
+    ros-humble-nav2-bringup \
+    ros-humble-gazebo-ros-pkgs \
 
 # clone required submodules from .gitmodules file
 git submodule update --init --recursive

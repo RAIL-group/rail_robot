@@ -69,11 +69,11 @@ def launch_setup(context, *args, **kwargs):
     )
 
     # Navigation and Localization
-    # Specify the actions
-    localization_group = GroupAction([
+    rail_robot_navigation_group = GroupAction([
         PushRosNamespace(
             namespace=robot_name_launch_arg),
 
+        # Localization
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(PathJoinSubstitution([
                 FindPackageShare('rail_robot'),
@@ -84,13 +84,14 @@ def launch_setup(context, *args, **kwargs):
                               'use_sim_time': 'true',
                               'autostart': autostart_launch_arg,
                               'params_file': params_file_launch_arg,
-                              'use_respawn': use_respawn_launch_arg}.items()),
-    ])
+                              'use_respawn': use_respawn_launch_arg}.items(),
+            condition = LaunchConfigurationEquals(
+                launch_configuration_name='slam_mode',
+                expected_value='localization'
+            )
+        ),
 
-    navigation_group = GroupAction([
-        PushRosNamespace(
-            namespace=robot_name_launch_arg),
-
+        # Navigation
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(PathJoinSubstitution([
                 FindPackageShare('rail_robot'),
@@ -100,14 +101,15 @@ def launch_setup(context, *args, **kwargs):
                               'use_sim_time': 'true',
                               'autostart': autostart_launch_arg,
                               'params_file': params_file_launch_arg,
-                              'use_respawn': use_respawn_launch_arg}.items()),
+                              'use_respawn': use_respawn_launch_arg}.items()
+        ),
     ])
+
 
     return [
         rail_robot_description_launch_include,
         rail_robot_slam_launch_include,
-        localization_group,
-        navigation_group
+        rail_robot_navigation_group
     ]
 
 
@@ -155,6 +157,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
         'map',
+        default_value=' ',
         description='Full path to map yaml file to load')
     )
     declared_arguments.append(
