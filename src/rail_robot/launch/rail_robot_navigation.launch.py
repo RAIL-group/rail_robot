@@ -46,11 +46,10 @@ def launch_setup(context, *args, **kwargs):
     #              https://github.com/ros2/launch_ros/issues/56
 
     remappings = [('cmd_vel_smoothed', 'cmd_vel')]
-    if LaunchConfigurationEquals('use_sim_time', 'true'):
+    if LaunchConfiguration('use_sim_time').perform(context)=='true':
         remappings.append(('cmd_vel', 'diffdrive_controller/cmd_vel_unstamped'))
     else:
         remappings.append(('cmd_vel', 'commands/velocity'))
-
 
     # Create our own temporary YAML files that include substitutions
     param_substitutions = {
