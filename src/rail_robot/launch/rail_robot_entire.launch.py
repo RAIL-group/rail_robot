@@ -22,6 +22,7 @@ def launch_setup(context, *args, **kwargs):
     world_filepath_launch_arg = LaunchConfiguration('world_filepath')
     hardware_type_launch_arg = LaunchConfiguration('hardware_type')
     use_sim_time_launch_arg = LaunchConfiguration('use_sim_time')
+    rviz_config_launch_arg = LaunchConfiguration('rviz_config')
     map_yaml_file_launch_arg = LaunchConfiguration('map')
     autostart_launch_arg = LaunchConfiguration('autostart')
     params_file_launch_arg = LaunchConfiguration('params_file')
@@ -46,6 +47,22 @@ def launch_setup(context, *args, **kwargs):
             'use_rviz': use_rviz_launch_arg,
             'use_sim_time': use_sim_time_launch_arg,
             'hardware_type': hardware_type_launch_arg,
+        }.items(),
+    )
+
+    # Rviz launch
+    rail_robot_rviz_launch_include = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'launch',
+                'rail_robot_rviz.launch.py'
+            ])
+        ]),
+        launch_arguments={
+            'robot_name': robot_name_launch_arg,
+            'use_sim_time': use_sim_time_launch_arg,
+            'rviz_config': rviz_config_launch_arg,
         }.items(),
     )
 
@@ -134,6 +151,7 @@ def launch_setup(context, *args, **kwargs):
 
     return [
         rail_robot_description_launch_include,
+        rail_robot_rviz_launch_include,
         rail_robot_simulation_launch_include,
         rail_robot_hardware_launch_include,
         rail_robot_slam_launch_include,
@@ -163,6 +181,15 @@ def generate_launch_description():
             ]),
             description="the file path to the Gazebo 'world' file to load.",
         )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument('rviz_config',
+                default_value=PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'config',
+                'namespaced_rviz.rviz',
+            ]),
+            description='Rviz configuration file')
     )
     declared_arguments.append(
         DeclareLaunchArgument('hardware_type',

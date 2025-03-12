@@ -9,7 +9,6 @@ from launch_ros.substitutions import FindPackageShare
 def launch_setup(context, *args, **kwargs):
     robot_name_launch_arg = LaunchConfiguration('robot_name')
     use_sim_time_launch_arg = LaunchConfiguration('use_sim_time')
-    use_rviz_launch_arg = LaunchConfiguration('use_rviz')
     hardware_type_launch_arg = LaunchConfiguration('hardware_type')
 
 
@@ -40,24 +39,9 @@ def launch_setup(context, *args, **kwargs):
     )
 
 
-    rviz2_node = Node(
-        condition=IfCondition(use_rviz_launch_arg),
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        namespace=robot_name_launch_arg,
-        parameters=[{
-            'use_sim_time': use_sim_time_launch_arg,
-        }],
-        output={'both': 'log'},
-        remappings=[('/goal_pose', 'goal_pose'),
-                    ('/clicked_point', 'clicked_point'),
-                    ('/initialpose', 'initialpose')]
-    )
 
     return [
         robot_state_publisher_node,
-        rviz2_node,
     ]
 
 
@@ -72,11 +56,6 @@ def generate_launch_description():
         DeclareLaunchArgument('use_sim_time',
                               default_value='false',
                               description='Use simulation (Gazebo) clock if true')
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument('use_rviz',
-                              default_value='true',
-                              description='Whether to launch RViz')
     )
     declared_arguments.append(
         DeclareLaunchArgument('hardware_type',
