@@ -19,6 +19,7 @@ from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 from launch_ros.descriptions import ParameterFile
 from nav2_common.launch import RewrittenYaml
+from launch.conditions import LaunchConfigurationEquals
 
 
 def launch_setup(context, *args, **kwargs):
@@ -43,11 +44,13 @@ def launch_setup(context, *args, **kwargs):
     # https://github.com/ros/robot_state_publisher/pull/30
     # TODO(orduno) Substitute with `PushNodeRemapping`
     #              https://github.com/ros2/launch_ros/issues/56
-    remappings = [
-        # ('/cmd_vel', 'commands/velocity'),
-        ('cmd_vel', 'diffdrive_controller/cmd_vel_unstamped'),
-        ('cmd_vel_smoothed', 'cmd_vel')
-    ]
+
+    remappings = [('cmd_vel_smoothed', 'cmd_vel')]
+    if LaunchConfigurationEquals('use_sim_time', 'true'):
+        remappings.append(('cmd_vel', 'diffdrive_controller/cmd_vel_unstamped'))
+    else:
+        remappings.append(('cmd_vel', 'commands/velocity'))
+
 
     # Create our own temporary YAML files that include substitutions
     param_substitutions = {
