@@ -108,7 +108,11 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument('map_yaml_file',
-                              default_value='true',
+                              default_value=PathJoinSubstitution([
+                                  FindPackageShare('rail_robot'),
+                                  'worlds',
+                                  'floor_map.yaml'
+                              ]),
                               description='Full path to map yaml file to load')
     )
     declared_arguments.append(

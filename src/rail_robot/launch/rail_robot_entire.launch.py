@@ -1,20 +1,19 @@
 import launch
-from launch_ros.actions import Node, PushRosNamespace
+from launch_ros.actions import PushRosNamespace
 from launch.actions import (
     IncludeLaunchDescription,
     DeclareLaunchArgument,
     OpaqueFunction,
     GroupAction,
-    SetLaunchConfiguration,
 )
 from launch.substitutions import (
     LaunchConfiguration,
     PathJoinSubstitution,
+    PythonExpression,
 )
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 from launch.conditions import LaunchConfigurationEquals
-
 
 def launch_setup(context, *args, **kwargs):
     robot_name_launch_arg = LaunchConfiguration('robot_name')
@@ -27,11 +26,6 @@ def launch_setup(context, *args, **kwargs):
     autostart_launch_arg = LaunchConfiguration('autostart')
     params_file_launch_arg = LaunchConfiguration('params_file')
     use_respawn_launch_arg = LaunchConfiguration('use_respawn')
-
-    SetLaunchConfiguration(
-        'use_sim_time',
-        value='true' if LaunchConfigurationEquals('hardware_type', 'gz_classic') else 'false'
-    )
 
     # Robot description launch
     rail_robot_description_launch_include = IncludeLaunchDescription(
@@ -202,7 +196,9 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument('use_sim_time',
-                              default_value='false',
+                              default_value=PythonExpression([
+                                "'true' if '", LaunchConfiguration('hardware_type'), "' == 'gz_classic' else 'false'"
+                              ]),
                               description='Use simulation time')
     )
 
@@ -218,7 +214,11 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
         'map',
-        default_value=' ',
+        default_value=PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'worlds',
+                'floor_map.yaml'
+        ]),
         description='Full path to map yaml file to load')
     )
     declared_arguments.append(

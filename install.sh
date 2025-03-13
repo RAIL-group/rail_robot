@@ -17,13 +17,13 @@ sudo apt install -y \
 git submodule update --init --recursive
 
 # Install dependencies
-if ! rosdep check --rosdistro humble --from-paths src --ignore-src; then
+if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
     echo "rosdep is not initialized. Initializing rosdep..."
     rosdep init
-    rosdep update
 else
     echo "rosdep is already initialized."
 fi
+rosdep update
 rosdep install -i --from-path src --rosdistro humble -y
 
 # Copy udev rules
