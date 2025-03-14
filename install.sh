@@ -6,6 +6,7 @@ set -e # Exit if a commands exists with a non-zero status
 sudo apt update
 sudo apt install -y \
     openssh-server \
+    ros-humble-ros2-control \
     ros-humble-kobuki-ros-interfaces \
     ros-humble-kobuki-velocity-smoother \
     ros-humble-sophus \
