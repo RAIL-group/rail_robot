@@ -99,51 +99,58 @@ def launch_setup(context, *args, **kwargs):
         load_nodes
     ]
 
+
 def generate_launch_description():
     declared_arguments = []
     declared_arguments.append(
-        DeclareLaunchArgument('robot_name',
-                              default_value='robot',
-                              description='Namespace for the robot')
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument('map_yaml_file',
-                              default_value=PathJoinSubstitution([
-                                  FindPackageShare('rail_robot'),
-                                  'worlds',
-                                  'floor_map.yaml'
-                              ]),
-                              description='Full path to map yaml file to load')
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument('use_sim_time',
-                              default_value='false',
-                              description='Use simulation (Gazebo) clock if true')
+        DeclareLaunchArgument(
+            'robot_name',
+            default_value='robot',
+            description='Namespace for the robot')
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-        'params_file',
-        default_value=PathJoinSubstitution([
+            'map_yaml_file',
+            default_value=PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'worlds',
+                'floor_map.yaml'
+            ]),
+            description='Full path to map yaml file to load')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'use_sim_time',
+            default_value='false',
+            description='Use simulation (Gazebo) clock if true')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'params_file',
+            default_value=PathJoinSubstitution([
                 FindPackageShare('rail_robot'),
                 'config',
                 'nav2_params_official.yaml'
-        ]),
-        description='Full path to the ROS2 parameters file to use for all launched nodes')
+            ]),
+            description='Full path to the ROS2 parameters file to use for all launched nodes')
     )
     declared_arguments.append(
-        DeclareLaunchArgument('autostart',
-                              default_value='true',
-                              description='Automatically startup the nav2 stack.')
+        DeclareLaunchArgument(
+            'autostart',
+            default_value='true',
+            description='Automatically startup the nav2 stack.')
     )
     declared_arguments.append(
-        DeclareLaunchArgument('use_respawn',
-                              default_value='False',
-                              description='Whether to respawn if a node crashes.')
+        DeclareLaunchArgument(
+            'use_respawn',
+            default_value='False',
+            description='Whether to respawn if a node crashes.')
     )
     declared_arguments.append(
-        DeclareLaunchArgument('log_level',
-                              default_value='info',
-                              description='log level')
+        DeclareLaunchArgument(
+            'log_level',
+            default_value='info',
+            description='log level')
     )
 
     return LaunchDescription(

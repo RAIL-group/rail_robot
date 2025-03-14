@@ -1,11 +1,10 @@
-import launch
+from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import (
     IncludeLaunchDescription,
     DeclareLaunchArgument,
     OpaqueFunction,
-    SetEnvironmentVariable,
-    RegisterEventHandler,
+    SetEnvironmentVariable
 )
 from launch.substitutions import (
     LaunchConfiguration,
@@ -44,7 +43,6 @@ def launch_setup(context, *args, **kwargs):
             ).parent.resolve()),
         ]
     )
-
 
     gazebo_launch_include = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
@@ -92,7 +90,8 @@ def launch_setup(context, *args, **kwargs):
         executable='spawner',
         arguments=[
             '-c',
-            [LaunchConfiguration('robot_name'), TextSubstitution(text='/controller_manager')],
+            [LaunchConfiguration('robot_name'), TextSubstitution(
+                text='/controller_manager')],
             'diffdrive_controller',
 
         ],
@@ -111,9 +110,10 @@ def launch_setup(context, *args, **kwargs):
 def generate_launch_description():
     declared_arguments = []
     declared_arguments.append(
-        DeclareLaunchArgument('robot_name',
-                              default_value='robot',
-                              description='Namespace for the robot')
+        DeclareLaunchArgument(
+            'robot_name',
+            default_value='robot',
+            description='Namespace for the robot')
     )
     declared_arguments.append(
         DeclareLaunchArgument(
@@ -123,8 +123,8 @@ def generate_launch_description():
                 'worlds',
                 'floor.world',
             ]),
-            description="the file path to the Gazebo 'world' file to load.",
-        )
+            description="File path to the Gazebo 'world' file to load.")
     )
-    return launch.LaunchDescription(
+
+    return LaunchDescription(
         declared_arguments + [OpaqueFunction(function=launch_setup)])

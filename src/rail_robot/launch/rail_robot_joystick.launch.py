@@ -1,4 +1,4 @@
-import launch
+from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, GroupAction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -31,6 +31,7 @@ def launch_setup(context, *args, **kwargs):
         load_nodes
     ]
 
+
 def generate_launch_description():
     declared_arguments = []
     declared_arguments.append(DeclareLaunchArgument(
@@ -49,4 +50,4 @@ def generate_launch_description():
             description='Path to the joystick configuration YAML file')
     )
 
-    return launch.LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])
+    return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])

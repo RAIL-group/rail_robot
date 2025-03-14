@@ -1,4 +1,4 @@
-import launch
+from launch import LaunchDescription
 from launch_ros.actions import PushRosNamespace
 from launch.actions import (
     IncludeLaunchDescription,
@@ -14,6 +14,7 @@ from launch.substitutions import (
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 from launch.conditions import LaunchConfigurationEquals
+
 
 def launch_setup(context, *args, **kwargs):
     robot_name_launch_arg = LaunchConfiguration('robot_name')
@@ -61,7 +62,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     # Physical Hardware
-    rail_robot_hardware_launch_include =IncludeLaunchDescription(
+    rail_robot_hardware_launch_include = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
                 FindPackageShare('rail_robot'),
@@ -142,7 +143,6 @@ def launch_setup(context, *args, **kwargs):
         ),
     ])
 
-
     return [
         rail_robot_description_launch_include,
         rail_robot_rviz_launch_include,
@@ -156,14 +156,16 @@ def launch_setup(context, *args, **kwargs):
 def generate_launch_description():
     declared_arguments = []
     declared_arguments.append(
-        DeclareLaunchArgument('robot_name',
-                              default_value='robot',
-                              description='Namespace for the robot')
+        DeclareLaunchArgument(
+            'robot_name',
+            default_value='robot',
+            description='Namespace for the robot')
     )
     declared_arguments.append(
-        DeclareLaunchArgument('use_rviz',
-                              default_value='true',
-                              description='Whether to launch RViz')
+        DeclareLaunchArgument(
+            'use_rviz',
+            default_value='true',
+            description='Whether to launch RViz')
     )
     declared_arguments.append(
         DeclareLaunchArgument(
@@ -177,8 +179,9 @@ def generate_launch_description():
         )
     )
     declared_arguments.append(
-        DeclareLaunchArgument('rviz_config',
-                default_value=PathJoinSubstitution([
+        DeclareLaunchArgument(
+            'rviz_config',
+            default_value=PathJoinSubstitution([
                 FindPackageShare('rail_robot'),
                 'config',
                 'namespaced_rviz.rviz',
@@ -186,61 +189,64 @@ def generate_launch_description():
             description='Rviz configuration file')
     )
     declared_arguments.append(
-        DeclareLaunchArgument('hardware_type',
-                               choices=(
-                                    'actual',
-                                    'gz_classic',
-                               ),
-                              default_value='gz_classic',
-                              description='Type of hardware interface to use')
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument('use_sim_time',
-                              default_value=PythonExpression([
-                                "'true' if '", LaunchConfiguration('hardware_type'), "' == 'gz_classic' else 'false'"
-                              ]),
-                              description='Use simulation time')
-    )
-
-    declared_arguments.append(
-        DeclareLaunchArgument('slam_mode',
-                               choices=(
-                                    'localization',
-                                    'slam',
-                               ),
-                              default_value='slam',
-                              description='Whether to run in localization or SLAM mode')
+        DeclareLaunchArgument(
+            'hardware_type',
+            choices=(
+                'actual',
+                'gz_classic',
+            ),
+            default_value='gz_classic',
+            description='Type of hardware interface to use')
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-        'map',
-        default_value=PathJoinSubstitution([
+            'use_sim_time',
+            default_value=PythonExpression([
+                "'true' if '", LaunchConfiguration(
+                    'hardware_type'), "' == 'gz_classic' else 'false'"
+            ]),
+            description='Use simulation time')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'slam_mode',
+            choices=(
+                'localization',
+                'slam',
+            ),
+            default_value='slam',
+            description='Whether to run in localization or SLAM mode')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'map',
+            default_value=PathJoinSubstitution([
                 FindPackageShare('rail_robot'),
                 'worlds',
                 'floor_map.yaml'
-        ]),
-        description='Full path to map yaml file to load')
+            ]),
+            description='Full path to map yaml file to load')
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-        'params_file',
-        default_value=PathJoinSubstitution([
+            'params_file',
+            default_value=PathJoinSubstitution([
                 FindPackageShare('rail_robot'),
                 'config',
                 'nav2_params_official.yaml'
-        ]),
-        description='Full path to the ROS2 parameters file to use for all launched nodes')
+            ]),
+            description='Full path to the ROS2 parameters file to use for all launched nodes')
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-        'autostart', default_value='true',
-        description='Automatically startup the nav2 stack')
+            'autostart', default_value='true',
+            description='Automatically startup the nav2 stack')
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-        'use_respawn', default_value='False',
-        description='Whether to respawn if a node crashes.')
+            'use_respawn', default_value='False',
+            description='Whether to respawn if a node crashes.')
     )
 
-    return launch.LaunchDescription(
+    return LaunchDescription(
         declared_arguments + [OpaqueFunction(function=launch_setup)])

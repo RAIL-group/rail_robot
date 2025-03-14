@@ -19,7 +19,6 @@ from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 from launch_ros.descriptions import ParameterFile
 from nav2_common.launch import RewrittenYaml
-from launch.conditions import LaunchConfigurationEquals
 
 
 def launch_setup(context, *args, **kwargs):
@@ -46,8 +45,9 @@ def launch_setup(context, *args, **kwargs):
     #              https://github.com/ros2/launch_ros/issues/56
 
     remappings = [('cmd_vel_smoothed', 'cmd_vel')]
-    if LaunchConfiguration('use_sim_time').perform(context)=='true':
-        remappings.append(('cmd_vel', 'diffdrive_controller/cmd_vel_unstamped'))
+    if LaunchConfiguration('use_sim_time').perform(context) == 'true':
+        remappings.append(
+            ('cmd_vel', 'diffdrive_controller/cmd_vel_unstamped'))
     else:
         remappings.append(('cmd_vel', 'commands/velocity'))
 
@@ -64,7 +64,6 @@ def launch_setup(context, *args, **kwargs):
             param_rewrites=param_substitutions,
             convert_types=True),
         allow_substs=True)
-
 
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
@@ -160,44 +159,50 @@ def launch_setup(context, *args, **kwargs):
 def generate_launch_description():
     declared_arguments = []
     declared_arguments.append(
-        DeclareLaunchArgument('robot_name',
-                              default_value='robot',
-                              description='Namespace for the robot')
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument('map_yaml_file',
-                              default_value='true',
-                              description='Full path to map yaml file to load')
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument('use_sim_time',
-                              default_value='false',
-                              description='Use simulation (Gazebo) clock if true')
+        DeclareLaunchArgument(
+            'robot_name',
+            default_value='robot',
+            description='Namespace for the robot')
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-        'params_file',
-        default_value=PathJoinSubstitution([
+            'map_yaml_file',
+            default_value='true',
+            description='Full path to map yaml file to load')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'use_sim_time',
+            default_value='false',
+            description='Use simulation (Gazebo) clock if true')
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            'params_file',
+            default_value=PathJoinSubstitution([
                 FindPackageShare('rail_robot'),
                 'config',
                 'nav2_params_official.yaml'
-        ]),
-        description='Full path to the ROS2 parameters file to use for all launched nodes')
+            ]),
+            description='Full path to the ROS2 parameters file to use for all launched nodes')
     )
     declared_arguments.append(
-        DeclareLaunchArgument('autostart',
-                              default_value='true',
-                              description='Automatically startup the nav2 stack.')
+        DeclareLaunchArgument(
+            'autostart',
+            default_value='true',
+            description='Automatically startup the nav2 stack.')
     )
     declared_arguments.append(
-        DeclareLaunchArgument('use_respawn',
-                              default_value='False',
-                              description='Whether to respawn if a node crashes.')
+        DeclareLaunchArgument(
+            'use_respawn',
+            default_value='False',
+            description='Whether to respawn if a node crashes.')
     )
     declared_arguments.append(
-        DeclareLaunchArgument('log_level',
-                              default_value='info',
-                              description='log level')
+        DeclareLaunchArgument(
+            'log_level',
+            default_value='info',
+            description='log level')
     )
 
     return LaunchDescription(

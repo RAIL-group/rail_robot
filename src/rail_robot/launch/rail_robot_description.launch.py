@@ -1,6 +1,5 @@
-import launch
+from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.conditions import IfCondition
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command, FindExecutable
 from launch_ros.substitutions import FindPackageShare
@@ -11,21 +10,20 @@ def launch_setup(context, *args, **kwargs):
     use_sim_time_launch_arg = LaunchConfiguration('use_sim_time')
     hardware_type_launch_arg = LaunchConfiguration('hardware_type')
 
-
     robot_description = Command([
-            'sh -c "',
-            FindExecutable(name='xacro'), ' ',
-            PathJoinSubstitution([
-                FindPackageShare('rail_robot'),
-                'urdf',
-                'rail_robot.urdf.xacro'
-            ]), ' ',
-            'robot_name:=', robot_name_launch_arg, ' ',
-            'hardware_type:=', hardware_type_launch_arg, ' ',
-            # Stripping comments from the URDF is necessary for gazebo_ros2_control to parse the
-            # robot_description parameter override
-            '| ', FindExecutable(name='perl'), ' -0777 -pe \'s/<!--.*?-->//gs\'"'
-        ])
+        'sh -c "',
+        FindExecutable(name='xacro'), ' ',
+        PathJoinSubstitution([
+            FindPackageShare('rail_robot'),
+            'urdf',
+            'rail_robot.urdf.xacro'
+        ]), ' ',
+        'robot_name:=', robot_name_launch_arg, ' ',
+        'hardware_type:=', hardware_type_launch_arg, ' ',
+        # Stripping comments from the URDF is necessary for gazebo_ros2_control to parse the
+        # robot_description parameter override
+        '| ', FindExecutable(name='perl'), ' -0777 -pe \'s/<!--.*?-->//gs\'"'
+    ])
 
     robot_state_publisher_node = Node(
         package='robot_state_publisher',
@@ -37,8 +35,6 @@ def launch_setup(context, *args, **kwargs):
         }],
         output={'both': 'log'},
     )
-
-
 
     return [
         robot_state_publisher_node,
@@ -59,12 +55,12 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument('hardware_type',
-                               choices=(
-                                    'actual',
-                                    'gz_classic',
-                               ),
+                              choices=(
+                                  'actual',
+                                  'gz_classic',
+                              ),
                               default_value='actual',
                               description='Type of hardware interface to use')
     )
-    return launch.LaunchDescription(
+    return LaunchDescription(
         declared_arguments + [OpaqueFunction(function=launch_setup)])
