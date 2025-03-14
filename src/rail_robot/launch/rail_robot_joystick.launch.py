@@ -9,6 +9,8 @@ def launch_setup(context, *args, **kwargs):
     robot_name_launch_arg = LaunchConfiguration('robot_name')
     params_file_launch_arg = LaunchConfiguration('params_file')
 
+    remappings = [('/cmd_vel', (robot_name_launch_arg, '/commands/velocity'))]
+
     load_nodes = GroupAction(
         actions=[
             Node(
@@ -16,16 +18,13 @@ def launch_setup(context, *args, **kwargs):
                 parameters=[{
                     'device_id': 0,
                     'deadzone': 0.3,
-                    'autorepeat_rate': 20.0}]
-            ),
+                    'autorepeat_rate': 20.0}]),
             Node(
                 package='teleop_twist_joy', executable='teleop_node',
                 name='teleop_twist_joy_node',
-                parameters=[{'config_filepath': params_file_launch_arg,
-                             'publish_stamped_twist': False}],
-                remappings=[
-                    ('/cmd_vel', (robot_name_launch_arg, '/commands/velocity'))]
-            )]
+                parameters=[params_file_launch_arg],
+                remappings=remappings)
+        ]
     )
 
     return [
