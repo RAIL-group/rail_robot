@@ -59,6 +59,7 @@ def launch_setup(context, *args, **kwargs):
             'use_sim_time': use_sim_time_launch_arg,
             'rviz_config': rviz_config_launch_arg,
         }.items(),
+        condition=LaunchConfigurationEquals('use_rviz', 'true')
     )
 
     # Physical Hardware
