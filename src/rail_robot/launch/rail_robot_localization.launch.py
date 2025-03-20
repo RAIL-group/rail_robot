@@ -16,7 +16,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
-from launch_ros.actions import Node
+from launch_ros.actions import Node, PushRosNamespace
 from launch_ros.descriptions import ParameterFile
 from nav2_common.launch import RewrittenYaml
 
@@ -60,6 +60,7 @@ def launch_setup(context, *args, **kwargs):
 
     load_nodes = GroupAction(
         actions=[
+            PushRosNamespace(namespace=robot_name_launch_arg),
             Node(
                 package='nav2_map_server',
                 executable='map_server',
@@ -109,14 +110,13 @@ def generate_launch_description():
             description='Namespace for the robot')
     )
     declared_arguments.append(
-        DeclareLaunchArgument(
-            'map_yaml_file',
-            default_value=PathJoinSubstitution([
-                FindPackageShare('rail_robot'),
-                'worlds',
-                'floor_map.yaml'
-            ]),
-            description='Full path to map yaml file to load')
+        DeclareLaunchArgument('map',
+                              default_value=PathJoinSubstitution([
+                                  FindPackageShare('rail_robot'),
+                                  'worlds',
+                                  'floor_map.yaml'
+                              ]),
+                              description='Full path to map yaml file to load')
     )
     declared_arguments.append(
         DeclareLaunchArgument(

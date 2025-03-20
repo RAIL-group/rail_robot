@@ -39,7 +39,6 @@ def launch_setup(context, *args, **kwargs):
         ]),
         launch_arguments={
             'robot_name': robot_name_launch_arg,
-            'use_rviz': use_rviz_launch_arg,
             'use_sim_time': use_sim_time_launch_arg,
             'hardware_type': hardware_type_launch_arg,
         }.items(),
@@ -88,9 +87,7 @@ def launch_setup(context, *args, **kwargs):
         ]),
         launch_arguments={
             'robot_name': robot_name_launch_arg,
-            'use_rviz': use_rviz_launch_arg,
             'world_filepath': world_filepath_launch_arg,
-            'hardware_type': hardware_type_launch_arg,
         }.items(),
         condition=LaunchConfigurationEquals('hardware_type', 'gz_classic')
     )
@@ -112,8 +109,6 @@ def launch_setup(context, *args, **kwargs):
 
     # Navigation and Localization
     rail_robot_navigation_group_include = GroupAction([
-        PushRosNamespace(
-            namespace=robot_name_launch_arg),
 
         # Localization
         IncludeLaunchDescription(

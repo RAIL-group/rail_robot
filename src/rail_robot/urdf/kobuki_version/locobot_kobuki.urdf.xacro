@@ -540,7 +540,7 @@
 
     <xacro:if value="${hardware_type == 'gz_ignition'}">
       <plugin filename="ign_ros2_control-system" name="ign_ros2_control::IgnitionROS2ControlPlugin">
-        <parameters> $(find interbotix_xslocobot_sim)/config/ros2_control_sim.yaml </parameters>
+        <parameters> $(find rail_robot)/config/ros2_control_sim.yaml </parameters>
       </plugin>
     </xacro:if>
 
