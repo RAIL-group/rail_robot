@@ -160,7 +160,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             'use_rviz',
-            default_value='true',
+            default_value='false',
             description='Whether to launch RViz')
     )
     declared_arguments.append(
@@ -191,7 +191,7 @@ def generate_launch_description():
                 'actual',
                 'gz_classic',
             ),
-            default_value='gz_classic',
+            default_value='actual',
             description='Type of hardware interface to use')
     )
     declared_arguments.append(
