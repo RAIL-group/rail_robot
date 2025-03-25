@@ -43,6 +43,11 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'robot_name', default_value='robot', description='Namespace for the robot')
     )
+    declared_arguments.append(
+        DeclareLaunchArgument('use_sim_time',
+                              default_value='false',
+                              description='Use simulation (Gazebo) clock if true')
+    )
 
     return LaunchDescription(
         declared_arguments + [OpaqueFunction(function=launch_setup)])
