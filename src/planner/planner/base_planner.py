@@ -1,12 +1,9 @@
 import rclpy
-from rclpy.action import ActionClient
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
-from nav_msgs.msg import Odometry
 import yaml
 import math
 from nav2_simple_commander.robot_navigator import BasicNavigator
-from nav2_msgs.action import NavigateToPose
 from nav2_simple_commander.robot_navigator import TaskResult
 import message_filters
 from scipy.optimize import linear_sum_assignment
@@ -15,19 +12,23 @@ import random
 
 class BasePlannerNode(Node):
     """Abstract Planner class"""
+
     def __init__(self, name=None):
         name = name if name is not None else 'base_planner'
         super().__init__(name)
 
         self.declare_parameter('all_robot_names', 'robot')
-        self.declare_parameter('container_info_file', '/home/abhish/ros2/rail_robot/src/rail_robot/worlds/floor_map_containers.yaml')
+        self.declare_parameter(
+            'container_info_file', '/home/abhish/ros2/rail_robot/src/rail_robot/worlds/floor_map_containers.yaml')
 
-        self.all_robot_names = self.get_parameter('all_robot_names').get_parameter_value().string_value.split(',')
+        self.all_robot_names = self.get_parameter(
+            'all_robot_names').get_parameter_value().string_value.split(',')
         print(self.all_robot_names)
-        yaml_file = self.get_parameter('container_info_file').get_parameter_value().string_value
+        yaml_file = self.get_parameter(
+            'container_info_file').get_parameter_value().string_value
 
         if yaml_file is None:
-            raise ValueError(f"container_info_file cannot be None.")
+            raise ValueError("container_info_file cannot be None.")
 
         self.points = load_points_from_yaml(yaml_file)
 
@@ -36,16 +37,18 @@ class BasePlannerNode(Node):
         self.pose_subscribers = {
             robot: message_filters.Subscriber(
                 self, PoseStamped, f'/{robot}/current_pose')
-        for robot in self.all_robot_names}
+            for robot in self.all_robot_names}
 
-        ts = message_filters.TimeSynchronizer(self.pose_subscribers.values(), 10)
+        ts = message_filters.TimeSynchronizer(
+            self.pose_subscribers.values(), 10)
         ts.registerCallback(self.set_poses)
         print('Waiting for all robot poses')
 
-        self.navigators = {robot: BasicNavigator(namespace=robot) for robot in self.all_robot_names}
-        print("Wating until nav2 is active for all robots")
+        self.navigators = {robot: BasicNavigator(
+            namespace=robot) for robot in self.all_robot_names}
+        print("Waiting until nav2 is active for all robots")
         for nav in self.navigators.values():
-            nav.waitUntilNav2Active()
+            nav.lifecycleStartup()
         self.is_goal_reached = {robot: False for robot in self.all_robot_names}
 
     def set_poses(self, *args):
@@ -75,7 +78,7 @@ class BasePlannerNode(Node):
             goal_pose.pose.position.x = point[0]
             goal_pose.pose.position.y = point[1]
             goal_pose.pose.position.z = point[2]
-            goal_pose.pose.orientation.w = 0.0
+            goal_pose.pose.orientation.w = 1.0
             goal_poses[robot] = goal_pose
 
         for robot in self.all_robot_names:
@@ -84,7 +87,8 @@ class BasePlannerNode(Node):
             nav.goToPose(goal_pose)
 
         while not any(self.is_goal_reached.values()):
-            self.is_goal_reached = {robot: nav.isTaskComplete() for robot, nav in self.navigators.items()}
+            self.is_goal_reached = {robot: nav.isTaskComplete()
+                                    for robot, nav in self.navigators.items()}
 
         completed_robot = None
         for robot, is_complete in self.is_goal_reached.items():
@@ -106,7 +110,8 @@ class BasePlannerNode(Node):
         for robot in self.all_robot_names:
             robot_pose = self.robot_poses[robot]
             for subgoal, (px, py, _) in self.points.items():
-                distance = math.sqrt((robot_pose.pose.position.x - px) ** 2 + (robot_pose.pose.position.y - py) ** 2)
+                distance = math.sqrt(
+                    (robot_pose.pose.position.x - px) ** 2 + (robot_pose.pose.position.y - py) ** 2)
                 subgoal_distances[(robot, subgoal)] = distance
 
         return subgoal_distances
@@ -123,15 +128,13 @@ class BasePlannerNode(Node):
                 subgoal.append(sg_name)
             cost_matrix.append(cost)
             subgoal_matrix.append(subgoal)
-        joint_action_list = find_action_list_from_cost_matrix_using_lsa(cost_matrix, subgoal_matrix)
+        joint_action_list = find_action_list_from_cost_matrix_using_lsa(
+            cost_matrix, subgoal_matrix)
         joint_action = {}
         for i, robot in enumerate(self.all_robot_names):
             joint_action[robot] = joint_action_list[i]
 
         return joint_action
-
-
-
 
 
 def find_action_list_from_cost_matrix_using_lsa(cost_matrix, subgoal_matrix):
@@ -170,7 +173,8 @@ def load_points_from_yaml(yaml_file):
         points_data = yaml.safe_load(file)
 
     for point_name, point_data in points_data.items():
-        points[point_name] = (point_data['x'], point_data['y'], point_data['z'])
+        points[point_name] = (
+            point_data['x'], point_data['y'], point_data['z'])
 
     return points
 
@@ -183,6 +187,7 @@ def main(args=None):
     rclpy.spin(planner_node)
 
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
