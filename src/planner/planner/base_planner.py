@@ -39,8 +39,8 @@ class BasePlannerNode(Node):
                 self, PoseStamped, f'/{robot}/current_pose')
             for robot in self.all_robot_names}
 
-        ts = message_filters.TimeSynchronizer(
-            self.pose_subscribers.values(), 10)
+        ts = message_filters.ApproximateTimeSynchronizer(
+            self.pose_subscribers.values(), 10, slop=4)
         ts.registerCallback(self.set_poses)
         print('Waiting for all robot poses')
 
@@ -181,11 +181,8 @@ def load_points_from_yaml(yaml_file):
 
 def main(args=None):
     rclpy.init(args=args)
-
     planner_node = BasePlannerNode()
-
     rclpy.spin(planner_node)
-
     rclpy.shutdown()
 
 
