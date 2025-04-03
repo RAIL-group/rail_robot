@@ -8,15 +8,17 @@ from tf2_ros import TransformException
 class PosePublisher(Node):
     def __init__(self):
         super().__init__('pose_publisher')
+        self.declare_parameter('robot_name', 'robot')
+        self.robot_name = self.get_parameter('robot_name').get_parameter_value().string_value
 
         self.tf_buffer = tf2_ros.buffer.Buffer()
         self.tf_listener = tf2_ros.transform_listener.TransformListener(self.tf_buffer, self)
 
         self.base_frame = 'map'
-        self.pose_frame = 'robot/base_link'
+        self.pose_frame = f'{self.robot_name}/base_link'
 
         self.timer = self.create_timer(1.0 / 10, self.publish_pose)
-        self.pose_pub = self.create_publisher(PoseStamped, '/robot/current_pose', 10)
+        self.pose_pub = self.create_publisher(PoseStamped, f'/{self.robot_name}/current_pose', 10)
 
     def publish_pose(self):
         try:
@@ -43,6 +45,7 @@ def main(args=None):
     pose_publisher = PosePublisher()
     rclpy.spin(pose_publisher)
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
