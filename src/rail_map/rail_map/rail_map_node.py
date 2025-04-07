@@ -21,9 +21,10 @@ qos = QoSProfile(
     durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
 )
 
+# Right now this work, changing Origin to (-100, -100) won't work
 GRID_SIZE = (2000, 2000)
-ORIGIN = (-100, -100)
-RESOLUTION = 0.09
+ORIGIN = (-50, -50)
+RESOLUTION = 0.05
 
 class RailMapPublisher(Node):
     def __init__(self):
@@ -31,6 +32,10 @@ class RailMapPublisher(Node):
         self.robot_grid = None
         self.pose_ = None
         self.simulator = self.setup_simulator()
+        self.init_map = False
+        self.static_map = None
+        self.final_origin = None
+        self.resolution = RESOLUTION
 
         # Subscriptions
         self.pose_sub = self.create_subscription(
@@ -79,25 +84,62 @@ class RailMapPublisher(Node):
         pose[2] = np.pi - pose[2]  # Correction for lidar pose
         self.pose_ = pose
 
+    def get_transformed_map_and_pose(self, final_map, current_map, final_origin, current_origin, resolution, pose=None):
+
+        # Compute the offset between the two origins
+        dx = int((current_origin[0] - final_origin[0]) / resolution)
+        dy = int((current_origin[1] - final_origin[1]) / resolution)
+
+        # Initialize the transformed map with UNOBSERVED_VAL
+        transformed_map = np.full_like(final_map, UNOBSERVED_VAL)
+
+        # shift_x and shift_y are swapped since world frame x-axis is grid axis 1 and y-axis is grid-axis 0
+        y_end = dy + current_map.shape[0]
+        x_end = dx + current_map.shape[1]
+        transformed_map[dy:y_end, dx:x_end] = current_map
+
+        if pose is None:
+            return transformed_map, None
+
+        transformed_pose = (pose[0] + dy, pose[1] + dx)
+
+        return transformed_map, transformed_pose
+
     def map_callback(self, msg):
         self.msg = msg
         grid_shape = (msg.info.height, msg.info.width)
         occupancy_grid = np.array(msg.data).reshape(grid_shape)
-        origin = (msg.info.origin.position.x, msg.info.origin.position.y)
+        current_origin = (msg.info.origin.position.x, msg.info.origin.position.y)
         resolution = msg.info.resolution
-        if self.robot_grid is None:
-            self.robot_grid = np.full(grid_shape, UNOBSERVED_VAL)
+
+        # Initialize the map.
+        if not self.init_map:
+            self.static_map = np.full(GRID_SIZE, UNOBSERVED_VAL)
+            self.final_origin = ORIGIN
+            self.resolution = resolution
+            self.init_map = True
 
         if self.pose_ is not None:
-            pose = self.world_frame_to_map_frame(self.pose_, origin, resolution)
-            self.robot_grid = self.update_robot_grid(occupancy_grid, self.robot_grid, pose)
-            self.publish_robot_grid(self.robot_grid, self.msg.info.origin, resolution)
+            # Transform the current occupancy grid to the static map frame
+            transformed_grid, transformed_pose = self.get_transformed_map_and_pose(
+                self.static_map,
+                occupancy_grid,
+                self.final_origin,
+                current_origin,
+                resolution,
+                self.world_frame_to_map_frame(self.pose_, current_origin, resolution)
+            )
 
-    def update_robot_grid(self, known_map, robot_grid, pose):
-        self.simulator.set_known_map(known_map)
-        robot_pose = Pose(*pose)
-        _, updated_grid = self.simulator.get_laser_scan_and_update_map(robot_pose, robot_grid)
-        return updated_grid
+            if self.robot_grid is None:
+                self.robot_grid = np.full(self.static_map.shape, UNOBSERVED_VAL)
+
+            # Update grid and publish.
+            self.simulator.set_known_map(transformed_grid)
+            robot_pose = Pose(*transformed_pose, self.pose_[2])
+            _, updated_grid = self.simulator.get_laser_scan_and_update_map(robot_pose, self.robot_grid)
+            self.robot_grid = updated_grid
+
+            self.publish_robot_grid(self.robot_grid, self.final_origin, self.resolution)
 
     def publish_robot_grid(self, robot_grid, origin, resolution):
         """Converts the robot grid to an OccupancyGrid message and publishes it."""
@@ -105,12 +147,17 @@ class RailMapPublisher(Node):
         grid_msg.header = self.msg.header
         grid_msg.info.width = robot_grid.shape[1]
         grid_msg.info.height = robot_grid.shape[0]
-        grid_msg.info.origin = origin
-        grid_msg.info.resolution = resolution
+
+        grid_msg.info.origin.position.x = float(origin[0])
+        grid_msg.info.origin.position.y = float(origin[1])
+        grid_msg.info.origin.position.z = float(self.msg.info.origin.position.z)
+
+        grid_msg.info.origin.orientation = self.msg.info.origin.orientation
+
+        grid_msg.info.resolution = float(resolution)
         grid_msg.data = robot_grid.astype(int).flatten().tolist()
 
         self.map_pub.publish(grid_msg)
-        self.get_logger().info('Published Rail Map')
 
 def main(args=None):
     rclpy.init(args=args)
