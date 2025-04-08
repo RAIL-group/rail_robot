@@ -29,6 +29,10 @@ RESOLUTION = 0.05
 class RailMapPublisher(Node):
     def __init__(self):
         super().__init__('rail_map_publisher')
+        
+        self.declare_parameter('robot_name', 'robot')
+        robot_name = self.get_parameter('robot_name').get_parameter_value().string_value
+        
         self.robot_grid = None
         self.pose_ = None
         self.simulator = self.setup_simulator()
@@ -40,20 +44,20 @@ class RailMapPublisher(Node):
         # Subscriptions
         self.pose_sub = self.create_subscription(
             PoseStamped,
-            '/robot/current_pose',
+            f'/{robot_name}/current_pose',
             self.pose_callback,
             10
         )
         self.map_sub = self.create_subscription(
             OccupancyGrid,
-            '/robot/map',
+            f'/{robot_name}/map',
             self.map_callback,
             10
         )
 
         self.map_pub = self.create_publisher(
             OccupancyGrid,
-            '/robot/rail_map',
+            f'/{robot_name}/rail_map',
             qos
         )
 
