@@ -57,10 +57,31 @@ def launch_setup(context, *args, **kwargs):
                     'yaw': TextSubstitution(text=str(robot['yaw'])),
                     'add_robot_only': only_add_robot,
                 }.items(),
-            ),
-        ])
+            )])
+
+        # Localization
+        localization = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'launch',
+                'rail_robot_localization.launch.py'])),
+            launch_arguments={'robot_name': robot['name'],
+                              'use_sim_time': 'true'}.items(),
+        )
+
+        # Navigation
+        navigation = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'launch',
+                'rail_robot_navigation.launch.py'])),
+            launch_arguments={'robot_name': robot['name'],
+                              'use_sim_time': 'true'}.items()
+        )
         only_add_robot = 'true'
         robot_launch_instances.append(group)
+        robot_launch_instances.append(localization)
+        robot_launch_instances.append(navigation)
 
     return robot_launch_instances
 
