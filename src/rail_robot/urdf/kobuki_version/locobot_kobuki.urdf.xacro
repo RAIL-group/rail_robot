@@ -528,7 +528,7 @@
 
   <gazebo>
     <xacro:if value="${hardware_type == 'gz_classic'}">
-      <plugin name="gazebo_ros2_control_${robot_name}" filename="libgazebo_ros2_control.so">
+      <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
         <ros>
           <namespace>/$(arg robot_name)</namespace>
         </ros>
