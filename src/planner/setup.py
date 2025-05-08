@@ -21,8 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             'base_planner_node = planner.base_planner:main',
-            'optimistic_planner_node = planner.optimistic:main',
-            'robot_pose_node = planner.robot_pose:main'
+            'mr_task_planner_node = planner.base_task_planner:main',
+            'robot_pose_node = planner.robot_pose:main',
         ],
     },
 )
