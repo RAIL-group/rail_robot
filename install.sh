@@ -13,6 +13,7 @@ sudo apt install -y \
     ros-humble-navigation2 \
     ros-humble-nav2-bringup \
     ros-humble-gazebo-ros-pkgs \
+    ros-humble-rmw-cyclonedds-cpp
 
 # clone required submodules from .gitmodules file
 git submodule update --init --recursive
@@ -47,6 +48,7 @@ if ! grep -Fxq "export ROS_DOMAIN_ID=42" ~/.bashrc; then
     echo "export ROS_DOMAIN_ID=42" >> ~/.bashrc
     echo 'export ROS_IP=$(hostname -I | cut -d " " -f1)' >> ~/.bashrc
     echo 'export ROS_HOSTNAME=$(hostname -I | cut -d " " -f1)' >> ~/.bashrc
+    echo 'export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp' >> ~/.bashrc
 fi
 
 echo "Installation complete. Use 'source ~/.bashrc' to source the rail_robot package"
