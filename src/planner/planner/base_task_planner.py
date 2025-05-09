@@ -211,7 +211,7 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
             print(f'{completed_robot_idx} failed to reach container {reached_container_name}')
         if result == TaskResult.SUCCEEDED:
             print(f'Robot {completed_robot_idx + 1} reached container {reached_container_name}')
-            objects_found = self.get_revealed_objects(completed_robot_idx, reached_container_idx)
+            objects_found = self.get_revealed_objects(completed_robot_idx, reached_container_name)
             print(f"Objects found at {reached_container_name}: {objects_found}")
             self.add_objects_to_graph(reached_container_idx, objects_found)
             self.revealed_container_idxs[reached_container_idx] = objects_found
@@ -228,15 +228,17 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
     def get_unexplored_containers(self, explored_container_idx):
         return [node for node in self.unexplored_container_nodes if node.name != explored_container_idx]
 
-    def get_revealed_objects(self, completed_robot_idx, reached_container_idx):
+    def get_revealed_objects(self, completed_robot_idx, reached_container_name):
         objects_contained = {
-            5: ['plate', 'fork'],  # diningtable
-            6: ['toaster', 'laptop'],  # countertop
-            7: ['book'],  # drawer
-            8: ['keys'],  # sidetable
-            9: [],  # sink
+            'diningtable': ['plate', 'fork'],
+            'countertop': ['toaster', 'laptop'],
+            'drawer': ['book'],
+            'sidetable': ['keys', 'book'],
+            'sink': [],
+            'dresser': ['wallet'],
+            'garbagecan': []
         }
-        return objects_contained[reached_container_idx]
+        return objects_contained[reached_container_name]
 
 
     def add_objects_to_graph(self, container_idx, objects):
