@@ -1,6 +1,6 @@
 
 import rclpy
-from rclpy.node import Node as ROSNode
+from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 import yaml
 import math
@@ -13,20 +13,20 @@ from scipy.optimize import linear_sum_assignment
 import random
 import numpy as np
 from . import utils, plotting
-from mr_task.planner import OptimisticMRTaskPlanner
+from mr_task.planner import OptimisticMRTaskPlanner, LearnedMRTaskPlanner
 
 
 import matplotlib.pyplot as plt
 import mr_task
-from mr_task.core import Node
 
 
-class BaseTaskPlannerNode(OptimisticMRTaskPlanner, ROSNode):
+
+class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
     """Abstract Planner class"""
     def __init__(self, args, specification, name=None):
         name = name if name is not None else 'base_task_planner'
-        ROSNode.__init__(self, name)
-        OptimisticMRTaskPlanner.__init__(self, args, specification)
+        Node.__init__(self, name)
+        LearnedMRTaskPlanner.__init__(self, args, specification)
 
         # Parameters
         self.declare_parameter('all_robot_names', 'robot')
@@ -76,15 +76,18 @@ class BaseTaskPlannerNode(OptimisticMRTaskPlanner, ROSNode):
         self.robot_poses = [None for _ in self.all_robot_names]
 
         self.revealed_container_idxs = {}
-        self.unexplored_container_nodes = [Node(is_subgoal=True,
-                                                name=idx,
-                                                location=self.graph.get_node_position_by_idx(idx))
+        self.unexplored_container_nodes = [mr_task.core.Node(is_subgoal=True,
+                                                             name=idx,
+                                                             location=self.graph.get_node_position_by_idx(idx))
                                            for idx in self.graph.container_indices]
         print(self.unexplored_container_nodes)
         self.container_distances = self.compute_subgoal_distances(self.unexplored_container_nodes)
         self.is_task_complete = [False for _ in self.all_robot_names]
 
         self.explored_container_nodes = []
+        observations= {'observed_graph': self.graph,
+                       'observed_map': None}
+        self.update(observations, self.robot_poses, self.explored_container_nodes, self.unexplored_container_nodes, objects_found=())
         # plotting.plot_graph(self.graph)
         # plt.show()
 
@@ -154,19 +157,22 @@ class BaseTaskPlannerNode(OptimisticMRTaskPlanner, ROSNode):
         # if any(self.is_task_complete):
         self.plan_and_navigate()
 
+    def stop_all_robots(self):
+        print("Stopping all robots")
+        for nav in self.navigators:
+            nav.cancelTask()
+
     def plan_and_navigate(self):
         if self.dfa_planner.has_reached_accepting_state():
             print(f"Task {self.specification} complete!")
-            for nav in self.navigators:
-                nav.cancelTask()
+            self.stop_all_robots()
             exit()
 
         if len(self.unexplored_container_nodes) == 0:
             print("All containers explored.")
             for i, robot in enumerate(self.all_robot_names):
                 self.is_task_complete[i] = True
-            for nav in self.navigators:
-                nav.cancelTask()
+            self.stop_all_robots()
             exit()
         # print('plan and navigate')
         # robot_subgoal_distances = self.get_robot_subgoal_distances()
@@ -191,6 +197,7 @@ class BaseTaskPlannerNode(OptimisticMRTaskPlanner, ROSNode):
         while not any(self.is_task_complete):
             self.is_task_complete = [nav.isTaskComplete() for nav in self.navigators]
         print(self.is_task_complete)
+        self.stop_all_robots()
 
         completed_robot_idx = self.is_task_complete.index(True)
         # for robot_ix, is_complete in enumerate(self.is_task_complete):
@@ -208,8 +215,8 @@ class BaseTaskPlannerNode(OptimisticMRTaskPlanner, ROSNode):
             print(f"Objects found at {reached_container_name}: {objects_found}")
             self.add_objects_to_graph(reached_container_idx, objects_found)
             self.revealed_container_idxs[reached_container_idx] = objects_found
-            self.explored_container_nodes = [Node(name=idx, props=objects,
-                                                  location=self.graph.get_node_position_by_idx(idx))
+            self.explored_container_nodes = [mr_task.core.Node(name=idx, props=objects,
+                                                               location=self.graph.get_node_position_by_idx(idx))
                                              for idx, objects in self.revealed_container_idxs.items()]
             self.unexplored_container_nodes = self.get_unexplored_containers(reached_container_idx)
             observations= {'observed_graph': self.graph,
@@ -321,7 +328,12 @@ def load_points_from_yaml(yaml_file):
 
 def main(args=None):
     rclpy.init(args=args)
-    planner_node = BaseTaskPlannerNode(args=None,
+    planner_args = lambda: None
+    planner_args.network_file = '/home/abhish/lsp/data/mr_task/raihan_nn/fcnn.pt'
+    planner_args.C = 10
+    planner_args.num_iterations = 50000
+
+    planner_node = BaseTaskPlannerNode(args=planner_args,
                                        specification='F laptop & F keys')
     rclpy.spin(planner_node)
     rclpy.shutdown()
