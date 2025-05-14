@@ -92,6 +92,17 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
+    spawn_camera_controller_node = Node(
+        name='camera_controller_spawner',
+        package='controller_manager',
+        executable='spawner',
+        arguments=[
+            '-c',
+            f'{robot_name_launch_arg.perform(context)}/controller_manager',
+            'camera_controller',
+        ],
+    )
+
     spawn_diffdrive_controller_node = Node(
         name='diffdrive_controller_spawner',
         package='controller_manager',
@@ -110,6 +121,7 @@ def launch_setup(context, *args, **kwargs):
         gazebo_launch_include,
         spawn_robot_node,
         spawn_joint_state_broadcaster_node,
+        spawn_camera_controller_node,
         spawn_diffdrive_controller_node,
     ]
 

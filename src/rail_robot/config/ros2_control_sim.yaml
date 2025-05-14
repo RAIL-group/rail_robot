@@ -6,12 +6,17 @@
         type: joint_state_broadcaster/JointStateBroadcaster
       diffdrive_controller:
         type: diff_drive_controller/DiffDriveController
+      camera_controller:
+        type: position_controllers/JointGroupPositionController
   joint_state_broadcaster:
     ros__parameters:
       use_sim_time: True
       joints:
         - wheel_left_joint
         - wheel_right_joint
+        - pan
+        - tilt
+
   diffdrive_controller:
     ros__parameters:
       use_sim_time: True
@@ -75,3 +80,14 @@
       # Not using jerk limits yet
       # angular.z.max_jerk: 0.0
       # angular.z.min_jerk: 0.0
+
+  camera_controller:
+    ros__parameters:
+      use_sim_time: true
+      joints:
+        - pan
+        - tilt
+      command_interfaces:
+        - position
+      state_interfaces:
+        - position
