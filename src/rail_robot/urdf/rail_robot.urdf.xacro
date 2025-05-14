@@ -15,8 +15,9 @@
   <xacro:include filename="$(find rail_robot)/urdf/lidar.urdf.xacro" />
   <xacro:include filename="$(find rail_robot)/urdf/battery.urdf.xacro" />
   <xacro:include filename="$(find rail_robot)/urdf/camera_tower.urdf.xacro" />
-    <xacro:include filename="$(find rail_robot)/urdf/kobuki_version/locobot_kobuki.urdf.xacro"/>
-    <xacro:property name="mesh_scale" value="0.001 0.001 0.001"/>
+  <xacro:include filename="$(find rail_robot)/urdf/pan_and_tilt.urdf.xacro" />
+  <xacro:include filename="$(find rail_robot)/urdf/kobuki_version/locobot_kobuki.urdf.xacro"/>
+  <xacro:property name="mesh_scale" value="0.001 0.001 0.001"/>
 
 
   <!-- ********************************** Plate **********************************  -->
@@ -71,6 +72,13 @@
             izz="0.0179300000"/>
         </inertial>
       </xacro:camera_tower>
+  <!-- ********************************** Pan & Tilt **********************************  -->
+
+      <xacro:pan_and_tilt>
+        <origin
+          rpy="0 0 0"
+          xyz="0.047228 0 0.44425"/>
+      </xacro:pan_and_tilt>
 
   <!-- ********************************** Lidar **********************************  -->
 
