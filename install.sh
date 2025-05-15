@@ -32,6 +32,7 @@ rosdep install -i --from-path src --rosdistro humble -y
 sudo cp ./udev/* /etc/udev/rules.d
 sudo service udev reload
 sudo service udev restart
+sudo usermod -aG video $USER
 
 # Install
 colcon build --symlink-install
