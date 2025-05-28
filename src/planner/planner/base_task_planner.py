@@ -1,7 +1,7 @@
-
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
+from sensor_msgs.msg import Image
 import yaml
 import math
 from nav2_simple_commander.robot_navigator import BasicNavigator
@@ -13,20 +13,40 @@ from scipy.optimize import linear_sum_assignment
 import random
 import numpy as np
 from . import utils, plotting
-from mr_task.planner import OptimisticMRTaskPlanner, LearnedMRTaskPlanner
-
-
+from . import object_detection
 import matplotlib.pyplot as plt
 import mr_task
+from cv_bridge import CvBridge
+import matplotlib
+import os
+from PIL import Image as PILImage
+from scipy.spatial.transform import Rotation as R
 
 
+ALL_OBJECTS = [
+    'bottle',
+    'cell phone',
+    'laptop',
+    'credit card',
+    'pan',
+    'spoon',
+    'grocery',
+]
 
-class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
+matplotlib.use('Agg')
+
+get_revealed_objects = object_detection.get_revealed_objects
+# get_revealed_objects = object_detection.get_revealed_objects_FAKE
+PLANNER = mr_task.planner.LearnedMRTaskPlanner
+# PLANNER = mr_task.planner.OptimisticMRTaskPlanner
+
+
+class BaseTaskPlannerNode(PLANNER, Node):
     """Abstract Planner class"""
     def __init__(self, args, specification, name=None):
         name = name if name is not None else 'base_task_planner'
         Node.__init__(self, name)
-        LearnedMRTaskPlanner.__init__(self, args, specification)
+        PLANNER.__init__(self, args, specification)
 
         # Parameters
         self.declare_parameter('all_robot_names', 'robot')
@@ -40,30 +60,36 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
         if yaml_file is None:
             raise ValueError("container_info_file cannot be None.")
 
+        self.robot_poses_dict = {robot: None for robot in self.all_robot_names}
+        self.robot_poses = [None for _ in self.all_robot_names]
+        # self.robot_images = [None for _ in self.all_robot_names]
+
         # Get the graph from containers
         self.graph = utils.get_scene_graph_from_yaml(yaml_file)
-
+        # plotting.plot_graph(self.graph)
+        # plt.savefig('graph.png')
         # Subscribers
         self.pose_subscribers = {
             robot: message_filters.Subscriber(
                 self, PoseStamped, f'/{robot}/current_pose')
             for robot in self.all_robot_names}
+        self.bridge = CvBridge()
 
         # static_map_qos_profile = QoSProfile(
         #     depth=1,
         #     durability=QoSDurabilityPolicy.TRANSIENT_LOCAL
         # )
 
-        # self.occupancy_map_subscriber =  self.create_subscription(
+        # self.occupancy_map_subscriber = self.create_subscription(
         #     OccupancyGrid,
         #     f'/{self.all_robot_names[0]}/map',
         #     self.occupancy_map_callback,
         #     static_map_qos_profile
         # )
 
-        ts = message_filters.ApproximateTimeSynchronizer(
+        pose_ts = message_filters.ApproximateTimeSynchronizer(
             self.pose_subscribers.values(), 10, slop=4)
-        ts.registerCallback(self.set_poses)
+        pose_ts.registerCallback(self.set_poses)
         print('Waiting for all robot poses')
 
         self.navigators = [BasicNavigator(
@@ -71,9 +97,6 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
         print("Waiting until nav2 is active for all robots")
         for nav in self.navigators:
             nav.lifecycleStartup()
-
-        self.robot_poses_dict = {robot: None for robot in self.all_robot_names}
-        self.robot_poses = [None for _ in self.all_robot_names]
 
         self.revealed_container_idxs = {}
         self.unexplored_container_nodes = [mr_task.core.Node(is_subgoal=True,
@@ -85,12 +108,31 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
         self.is_task_complete = [False for _ in self.all_robot_names]
 
         self.explored_container_nodes = []
-        observations= {'observed_graph': self.graph,
-                       'observed_map': None}
-        self.update(observations, self.robot_poses, self.explored_container_nodes, self.unexplored_container_nodes, objects_found=())
+        observations = {'observed_graph': self.graph,
+                        'observed_map': None}
+        self.update(observations, self.robot_poses, self.explored_container_nodes,
+                    self.unexplored_container_nodes, objects_found=())
+        for node in self.unexplored_container_nodes:
+            for obj in self.objects_to_find:
+                PS, _, _ = self.node_prop_dict[(node, obj)]
+                print(f'{(self.graph.get_node_name_by_idx(node.name), obj)}: {PS:.2f}')
+        # exit()
+
         # plotting.plot_graph(self.graph)
         # plt.show()
+        # print(self.robot_poses)
+        # exit()
 
+    def set_poses(self, *args):
+        """Callback to process robot's current position and publish nearest goal."""
+        for i, msg in enumerate(args):
+            robot = self.all_robot_names[i]
+            self.robot_poses_dict[robot] = msg
+        for i, robot in enumerate(self.all_robot_names):
+            pose = self.robot_poses_dict[robot]
+            self.robot_poses[i] = pose.pose.position
+        # if any(self.is_task_complete):
+        self.plan_and_navigate()
 
     def compute_subgoal_distances(self, nodes):
         distances = {}
@@ -109,7 +151,6 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
 
         # print(distances)
         return distances
-
 
     def get_inter_distances_nodes(self, nodes, robot_nodes, observed_map=None):
         distances = self.container_distances.copy()
@@ -131,8 +172,12 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
         pose.header.frame_id = "map"
         pose.pose.position.x = float(location[0])
         pose.pose.position.y = float(location[1])
-        # pose.pose.position.z = float(location[2])
-        pose.pose.orientation.w = 1.0
+        # print(location)
+        quaternion = utils.euler_to_quaternion([0, 0, math.radians(location[2])])
+        pose.pose.orientation.x = quaternion[0]
+        pose.pose.orientation.y = quaternion[1]
+        pose.pose.orientation.z = quaternion[2]
+        pose.pose.orientation.w = quaternion[3]
         return pose
 
     def get_path_length(self, path):
@@ -145,17 +190,6 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
             total_length += math.dist([p0.x, p0.y], [p1.x, p1.y])
 
         return total_length
-
-    def set_poses(self, *args):
-        """Callback to process robot's current position and publish nearest goal."""
-        for i, msg in enumerate(args):
-            robot = self.all_robot_names[i]
-            self.robot_poses_dict[robot] = msg
-        for i, robot in enumerate(self.all_robot_names):
-            pose = self.robot_poses_dict[robot]
-            self.robot_poses[i] = pose.pose.position
-        # if any(self.is_task_complete):
-        self.plan_and_navigate()
 
     def stop_all_robots(self):
         print("Stopping all robots")
@@ -178,6 +212,7 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
         # robot_subgoal_distances = self.get_robot_subgoal_distances()
         # robot_nodes = [mr_task.core.RobotNode(Node(location=(r_pose[0], r_pose[1]))) for r_pose in self.robot_poses]
         distances_fn = self.get_inter_distances_nodes
+
         joint_action, _ = self.compute_joint_action(distances_fn=distances_fn)
         # if joint_action is None:
         #     print(f"Task {self.specification} complete!")
@@ -199,6 +234,7 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
         print(self.is_task_complete)
         self.stop_all_robots()
 
+
         completed_robot_idx = self.is_task_complete.index(True)
         # for robot_ix, is_complete in enumerate(self.is_task_complete):
         #     if is_complete:
@@ -211,7 +247,8 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
             print(f'{completed_robot_idx} failed to reach container {reached_container_name}')
         if result == TaskResult.SUCCEEDED:
             print(f'Robot {completed_robot_idx + 1} reached container {reached_container_name}')
-            objects_found = self.get_revealed_objects(completed_robot_idx, reached_container_name)
+            camera_image = self.get_robot_image(completed_robot_idx)
+            objects_found = get_revealed_objects(camera_image, ALL_OBJECTS, reached_container_name)
             print(f"Objects found at {reached_container_name}: {objects_found}")
             self.add_objects_to_graph(reached_container_idx, objects_found)
             self.revealed_container_idxs[reached_container_idx] = objects_found
@@ -219,27 +256,15 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
                                                                location=self.graph.get_node_position_by_idx(idx))
                                              for idx, objects in self.revealed_container_idxs.items()]
             self.unexplored_container_nodes = self.get_unexplored_containers(reached_container_idx)
-            observations= {'observed_graph': self.graph,
-                           'observed_map': None}
-            self.update(observations, self.robot_poses, self.explored_container_nodes, self.unexplored_container_nodes, objects_found)
+            observations = {'observed_graph': self.graph,
+                            'observed_map': None}
+            self.update(observations, self.robot_poses, self.explored_container_nodes,
+                        self.unexplored_container_nodes, objects_found)
 
         self.is_task_complete[completed_robot_idx] = False
 
     def get_unexplored_containers(self, explored_container_idx):
         return [node for node in self.unexplored_container_nodes if node.name != explored_container_idx]
-
-    def get_revealed_objects(self, completed_robot_idx, reached_container_name):
-        objects_contained = {
-            'diningtable': ['plate', 'fork'],
-            'countertop': ['toaster', 'laptop'],
-            'drawer': ['book'],
-            'sidetable': ['keys', 'book'],
-            'sink': [],
-            'dresser': ['wallet'],
-            'garbagecan': []
-        }
-        return objects_contained[reached_container_name]
-
 
     def add_objects_to_graph(self, container_idx, objects):
         for name in objects:
@@ -251,7 +276,6 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
                 'type': [0, 0, 0, 1]  # Object
             })
             self.graph.add_edge(container_idx, obj_idx)
-
 
     def occupancy_map_callback(self, msg):
         # Extract map metadata
@@ -282,8 +306,15 @@ class BaseTaskPlannerNode(LearnedMRTaskPlanner, Node):
         plt.title("Occupancy Grid Map")
         plt.xlabel("X [m]")
         plt.ylabel("Y [m]")
-        plt.show()
+        plt.savefig('occupancy_map.png', dpi=600)
         exit()
+
+    def get_robot_image(self, robot_idx, path='~/mr_task_data'):
+        print(f"Getting image from robot {robot_idx}")
+        path = os.path.expanduser(path)
+        image_path = os.path.join(path, f"{self.all_robot_names[robot_idx]}_image.png")
+        image = PILImage.open(image_path)
+        return image
 
 
 def find_action_list_from_cost_matrix_using_lsa(cost_matrix, subgoal_matrix):
@@ -330,13 +361,14 @@ def load_points_from_yaml(yaml_file):
 
 def main(args=None):
     rclpy.init(args=args)
-    planner_args = lambda: None
-    planner_args.network_file = '/home/abhish/lsp/data/mr_task/raihan_nn/fcnn.pt'
+    planner_args = lambda: None  # noqa
+    planner_args.network_file = '/home/ab/lsp/data/mr_task/raihan_nn/fcnn.pt'
     planner_args.C = 10
     planner_args.num_iterations = 50000
 
     planner_node = BaseTaskPlannerNode(args=planner_args,
-                                       specification='F laptop & F keys')
+                                       specification='F bottle & F toiletpaper')
+                                    #    specification='F plate & F fork & F plant & F book & F keys & F laptop & F creditcard & F cellphone & F bottle')
     rclpy.spin(planner_node)
     rclpy.shutdown()
 
