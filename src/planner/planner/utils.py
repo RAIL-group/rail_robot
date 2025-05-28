@@ -3,6 +3,7 @@ from procthor.scenegraph import SceneGraph
 import math
 from nav_msgs.msg import Path
 from procthor.utils import get_dc_comps
+from scipy.spatial.transform import Rotation as R
 
 
 def compute_path_distance(path: Path) -> float:
@@ -37,7 +38,7 @@ def get_scene_graph_from_yaml(yaml_file):
     apartment_idx = graph.add_node({
         'id': 'Apartment|0',
         'name': 'apartment',
-        'position': (0, 0),
+        'position': (0, 0, 0),
         'type': [1, 0, 0, 0]  # Apartment
     })
 
@@ -45,7 +46,7 @@ def get_scene_graph_from_yaml(yaml_file):
     room_containers_info = {}
     for room_name, room_data in scene_data.items():
         room_id = f"{room_name}|0"
-        room_position = (room_data['x'], room_data['y'])  # z is ignored
+        room_position = (room_data['x'], room_data['y'], room_data['yaw'])
         room_idx = graph.add_node({
             'id': room_id,
             'name': room_name.lower(),
@@ -59,7 +60,7 @@ def get_scene_graph_from_yaml(yaml_file):
         # Add containers in the room
         for container_name, pos in containers.items():
             container_id = f"{room_id}/{container_name}"
-            container_position = (pos['x'], pos['y'])
+            container_position = (pos['x'], pos['y'], pos['yaw'])
 
             container_idx = graph.add_node({
                 'id': container_id,
@@ -107,7 +108,7 @@ def get_edges_for_connected_graph(graph, pos='position'):
         for comp in comps:
             for idx, target in enumerate(merged_set):
                 cost = math.dist(graph['nodes'][comp][pos],
-                                graph['nodes'][target][pos])
+                                 graph['nodes'][target][pos])
                 if cost < min_cost:
                     min_cost = cost
                     min_index = list(merged_set)[idx]
@@ -119,3 +120,13 @@ def get_edges_for_connected_graph(graph, pos='position'):
         length_of_dc = len(sorted_dc)
 
     return edges_to_add
+
+
+def euler_to_quaternion(euler):
+    r = R.from_euler('xyz', euler)
+    return r.as_quat()  # [x, y, z, w]
+
+
+def quaternion_to_euler(quaternion):
+    r = R.from_quat(quaternion)
+    return r.as_euler('xyz')  # returns roll, pitch, yaw
