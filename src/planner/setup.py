@@ -23,6 +23,7 @@ setup(
             'base_planner_node = planner.base_planner:main',
             'mr_task_planner_node = planner.base_task_planner:main',
             'robot_pose_node = planner.robot_pose:main',
+            'image_saver_node = planner.image_saver:main',
         ],
     },
 )
