@@ -1,7 +1,6 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
-from sensor_msgs.msg import Image
 import yaml
 import math
 from nav2_simple_commander.robot_navigator import BasicNavigator
@@ -20,7 +19,7 @@ from cv_bridge import CvBridge
 import matplotlib
 import os
 from PIL import Image as PILImage
-from scipy.spatial.transform import Rotation as R
+import time
 
 
 ALL_OBJECTS = [
@@ -112,10 +111,10 @@ class BaseTaskPlannerNode(PLANNER, Node):
                         'observed_map': None}
         self.update(observations, self.robot_poses, self.explored_container_nodes,
                     self.unexplored_container_nodes, objects_found=())
-        for node in self.unexplored_container_nodes:
-            for obj in self.objects_to_find:
-                PS, _, _ = self.node_prop_dict[(node, obj)]
-                print(f'{(self.graph.get_node_name_by_idx(node.name), obj)}: {PS:.2f}')
+        # for node in self.unexplored_container_nodes:
+        #     for obj in self.objects_to_find:
+        #         PS, _, _ = self.node_prop_dict[(node, obj)]
+        #         print(f'{(self.graph.get_node_name_by_idx(node.name), obj)}: {PS:.2f}')
         # exit()
 
         # plotting.plot_graph(self.graph)
@@ -143,13 +142,15 @@ class BaseTaskPlannerNode(PLANNER, Node):
                 if node1 == node2:
                     distances[(node1, node2)] = 0.0
                     continue
-
+                print(f"Computing distance between {node1.location} and {node2.location}")
                 start_pose = self.create_pose_stamped(node1.location)
                 goal_pose = self.create_pose_stamped(node2.location)
                 path = self.navigators[0].getPath(start=start_pose, goal=goal_pose)
+                # Compute path with another robot 1 if robot 0 fails.
+                if path is None and len(self.navigators) > 1:
+                    path = self.navigators[1].getPath(start=start_pose, goal=goal_pose)
                 distances[(node1, node2)] = self.get_path_length(path)
 
-        # print(distances)
         return distances
 
     def get_inter_distances_nodes(self, nodes, robot_nodes, observed_map=None):
@@ -161,6 +162,7 @@ class BaseTaskPlannerNode(PLANNER, Node):
             robot_pose = self.create_pose_stamped(robot.start.location)
 
             for node in nodes:
+                print(f"Computing distance from {self.all_robot_names[robot_idx]} to {node.location}")
                 goal_pose = self.create_pose_stamped(node.location)
                 path = navigator.getPath(start=robot_pose, goal=goal_pose)
                 distances[(robot.start, node)] = self.get_path_length(path)
@@ -234,7 +236,6 @@ class BaseTaskPlannerNode(PLANNER, Node):
         print(self.is_task_complete)
         self.stop_all_robots()
 
-
         completed_robot_idx = self.is_task_complete.index(True)
         # for robot_ix, is_complete in enumerate(self.is_task_complete):
         #     if is_complete:
@@ -247,8 +248,11 @@ class BaseTaskPlannerNode(PLANNER, Node):
             print(f'{completed_robot_idx} failed to reach container {reached_container_name}')
         if result == TaskResult.SUCCEEDED:
             print(f'Robot {completed_robot_idx + 1} reached container {reached_container_name}')
+            time.sleep(3)  # add delay so that latest image is available
             camera_image = self.get_robot_image(completed_robot_idx)
-            objects_found = get_revealed_objects(camera_image, ALL_OBJECTS, reached_container_name)
+            # objects_to_find = ALL_OBJECTS
+            objects_to_find = self.objects_to_find
+            objects_found = get_revealed_objects(camera_image, objects_to_find, reached_container_name)
             print(f"Objects found at {reached_container_name}: {objects_found}")
             self.add_objects_to_graph(reached_container_idx, objects_found)
             self.revealed_container_idxs[reached_container_idx] = objects_found
@@ -306,7 +310,7 @@ class BaseTaskPlannerNode(PLANNER, Node):
         plt.title("Occupancy Grid Map")
         plt.xlabel("X [m]")
         plt.ylabel("Y [m]")
-        plt.savefig('occupancy_map.png', dpi=600)
+        plt.savefig('occupancy_map_robotics.png', dpi=600)
         exit()
 
     def get_robot_image(self, robot_idx, path='~/mr_task_data'):
@@ -367,8 +371,7 @@ def main(args=None):
     planner_args.num_iterations = 50000
 
     planner_node = BaseTaskPlannerNode(args=planner_args,
-                                       specification='F bottle & F toiletpaper')
-                                    #    specification='F plate & F fork & F plant & F book & F keys & F laptop & F creditcard & F cellphone & F bottle')
+                                       specification='F remotecontrol & F pillow')
     rclpy.spin(planner_node)
     rclpy.shutdown()
 
