@@ -24,6 +24,7 @@ setup(
             'mr_task_planner_node = planner.base_task_planner:main',
             'robot_pose_node = planner.robot_pose:main',
             'image_saver_node = planner.image_saver:main',
+            'test_object_detection_node = planner.test_object_detection:main',
         ],
     },
 )
