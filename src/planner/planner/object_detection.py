@@ -1,6 +1,8 @@
 import os
-from groundingdino.util.inference import load_model, predict
+from groundingdino.util.inference import load_model, predict, annotate
 import groundingdino.datasets.transforms as T
+import numpy as np
+from PIL import Image
 
 GROUNDINGDINO_PATH = "/home/ab/projects/rail_physical_robot/GroundingDINO/groundingdino"
 config_path = os.path.join(GROUNDINGDINO_PATH, "config/GroundingDINO_SwinT_OGC.py")
@@ -14,6 +16,7 @@ NAME_MAPPING = [
     ('creditcard', 'credit card'),
     ('cellphone', 'cell phone'),
     ('shelvingunit', 'shelving unit'),
+    ('remotecontrol', 'remote control'),
 ]
 
 
@@ -38,7 +41,7 @@ def get_revealed_objects(camera_image, objects_to_find, reached_container_name='
     name_mapping = {k: v for k, v in NAME_MAPPING}
     objects_to_find = [name_mapping.get(obj, obj) for obj in objects_to_find]
     text_prompt = " . ".join(objects_to_find) + " ."
-    _, _, objects_found = predict(
+    boxes, logits, objects_found = predict(
         model=model,
         image=image,
         caption=text_prompt,
@@ -48,7 +51,15 @@ def get_revealed_objects(camera_image, objects_to_find, reached_container_name='
     )
     inverse_name_mapping = {v: k for k, v in NAME_MAPPING}
     objects_found = [inverse_name_mapping.get(obj, obj) for obj in objects_found]
-    print(f"Objects found: {objects_found}")
+    annotated_image = annotate(
+        np.array(camera_image),
+        boxes=boxes,
+        logits=logits,
+        phrases=objects_found,
+    )
+    annotated_image = Image.fromarray(annotated_image[..., ::-1].astype(np.uint8))
+    annotated_image.save(os.path.join(output_dir, f'{reached_container_name}_annotated.png'))
+
     return objects_found
 
 
