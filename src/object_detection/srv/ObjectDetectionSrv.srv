@@ -1,0 +1,7 @@
+string robot_name
+string[] objects_to_find
+---
+string[] objects_found
+float32[] probabilities
+sensor_msgs/Image raw_image
+sensor_msgs/Image annotated_image
