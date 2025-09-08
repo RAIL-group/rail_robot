@@ -35,7 +35,6 @@ ALL_OBJECTS = [
 matplotlib.use('Agg')
 
 get_revealed_objects = object_detection.get_revealed_objects
-# get_revealed_objects = object_detection.get_revealed_objects_FAKE
 PLANNER = mr_task.planner.LearnedMRTaskPlanner
 # PLANNER = mr_task.planner.OptimisticMRTaskPlanner
 
@@ -111,10 +110,12 @@ class BaseTaskPlannerNode(PLANNER, Node):
                         'observed_map': None}
         self.update(observations, self.robot_poses, self.explored_container_nodes,
                     self.unexplored_container_nodes, objects_found=())
+        self.probs = {}
         # for node in self.unexplored_container_nodes:
         #     for obj in self.objects_to_find:
         #         PS, _, _ = self.node_prop_dict[(node, obj)]
-        #         print(f'{(self.graph.get_node_name_by_idx(node.name), obj)}: {PS:.2f}')
+        #         self.probs[(self.graph.get_node_name_by_idx(node.name), obj)] = PS
+        # print_locations_by_object(self.probs)
         # exit()
 
         # plotting.plot_graph(self.graph)
@@ -154,7 +155,8 @@ class BaseTaskPlannerNode(PLANNER, Node):
         return distances
 
     def get_inter_distances_nodes(self, nodes, robot_nodes, observed_map=None):
-        distances = self.container_distances.copy()
+        # distances = self.container_distances.copy()
+        distances = self.compute_subgoal_distances(nodes)
 
         # Compute robot-to-subgoal distances
         for robot_idx, robot in enumerate(robot_nodes):
@@ -204,18 +206,22 @@ class BaseTaskPlannerNode(PLANNER, Node):
             self.stop_all_robots()
             exit()
 
-        if len(self.unexplored_container_nodes) == 0:
-            print("All containers explored.")
-            for i, robot in enumerate(self.all_robot_names):
-                self.is_task_complete[i] = True
-            self.stop_all_robots()
-            exit()
+        # if len(self.unexplored_container_nodes) == 0:
+        #     print("All containers explored.")
+        #     for i, robot in enumerate(self.all_robot_names):
+        #         self.is_task_complete[i] = True
+        #     self.stop_all_robots()
+        #     exit()
         # print('plan and navigate')
         # robot_subgoal_distances = self.get_robot_subgoal_distances()
         # robot_nodes = [mr_task.core.RobotNode(Node(location=(r_pose[0], r_pose[1]))) for r_pose in self.robot_poses]
         distances_fn = self.get_inter_distances_nodes
-
         joint_action, _ = self.compute_joint_action(distances_fn=distances_fn)
+        print_locations_by_object(self.probs)
+        for i, action in enumerate(joint_action):
+            container_name = self.graph.get_node_name_by_idx(action.target_node.name)
+            print(f"{self.all_robot_names[i]} assigned to container {container_name}")
+        # input('Press Enter to continue...')
         # if joint_action is None:
         #     print(f"Task {self.specification} complete!")
         #     return
@@ -257,6 +263,7 @@ class BaseTaskPlannerNode(PLANNER, Node):
             self.add_objects_to_graph(reached_container_idx, objects_found)
             self.revealed_container_idxs[reached_container_idx] = objects_found
             self.explored_container_nodes = [mr_task.core.Node(name=idx, props=objects,
+                                                               is_subgoal=False,
                                                                location=self.graph.get_node_position_by_idx(idx))
                                              for idx, objects in self.revealed_container_idxs.items()]
             self.unexplored_container_nodes = self.get_unexplored_containers(reached_container_idx)
@@ -363,15 +370,35 @@ def load_points_from_yaml(yaml_file):
     return points
 
 
+def print_locations_by_object(probs):
+    # regroup by object
+    obj_to_locs = {}
+    for (loc, obj), prob in probs.items():
+        obj_to_locs.setdefault(obj, []).append((loc, prob))
+
+    # print sorted results
+    for obj, locs in obj_to_locs.items():
+        # sort by probability (desc)
+        locs_sorted = sorted(locs, key=lambda x: x[1], reverse=True)
+        # format: location (prob)
+        locs_str = ", ".join(f"{loc} ({prob:.3f})" for loc, prob in locs_sorted)
+        print(f"{obj}: {locs_str}")
+
+
 def main(args=None):
     rclpy.init(args=args)
     planner_args = lambda: None  # noqa
     planner_args.network_file = '/home/ab/lsp/data/mr_task/raihan_nn/fcnn.pt'
     planner_args.C = 10
-    planner_args.num_iterations = 50000
+    planner_args.num_iterations = 100000
 
     planner_node = BaseTaskPlannerNode(args=planner_args,
-                                       specification='F remotecontrol & F pillow')
+                                    #    specification='F tv & F wallet & F box & F cellphone & F laptop & F bottle & F bag & F book & F bowl')
+                                    #    specification='(!bag U wallet) & (!wallet U laptop) & (F bag)')  # laptop -> wallet -> bag
+                                    #    specification='(!keys U laptop) & (!laptop U tv) & (F keys)')  # tv -> laptop -> keys
+                                    #    specification='(!wallet U laptop) & (F wallet)')  # laptop -> wallet
+                                        specification='((((!remotecontrol & !television) U wallet) | ((!remotecontrol & !television) U laptop)) & (!television U remotecontrol)) & (F television)')
+
     rclpy.spin(planner_node)
     rclpy.shutdown()
 
