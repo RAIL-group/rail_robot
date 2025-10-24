@@ -41,6 +41,7 @@ install(DIRECTORY
 # Install Python scripts
 install(PROGRAMS
   scripts/save_location_service.py
+  scripts/publish_location_tf_frames.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
