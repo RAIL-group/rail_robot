@@ -1,0 +1,4 @@
+string location_name
+string parent_location
+---
+string status_message

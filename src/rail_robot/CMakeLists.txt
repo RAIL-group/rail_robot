@@ -34,8 +34,21 @@ endif()
 
 # Install launch files.
 install(DIRECTORY
-  launch urdf meshes media config worlds
+  launch urdf meshes media config worlds scripts
   DESTINATION share/${PROJECT_NAME}/
 )
+
+# Install Python scripts
+install(PROGRAMS
+  scripts/save_location_service.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+find_package(rosidl_default_generators REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/SaveLocation.srv"
+)
+
 
 ament_package()
