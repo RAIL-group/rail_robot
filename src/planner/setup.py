@@ -25,6 +25,8 @@ setup(
             'robot_pose_node = planner.robot_pose:main',
             'image_saver_node = planner.image_saver:main',
             'test_object_detection_node = planner.test_object_detection:main',
+            'prompt_selection_planner_node = planner.prompt_selection_planner:main',
+            'prompt_selection_planner_node_new = planner.prompt_selection_planner_new:main',
         ],
     },
 )

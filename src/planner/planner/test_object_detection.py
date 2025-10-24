@@ -1,6 +1,6 @@
 import os
 from PIL import Image as PILImage
-from . import object_detection
+from . import object_detection_local
 import rclpy
 
 
@@ -18,7 +18,7 @@ def main(args=None):
     camera_image = get_robot_image(robot_name)
     objects_to_find = ['pillow', 'remotecontrol']
     reached_container_name = robot_name
-    objects_found = object_detection.get_revealed_objects(camera_image, objects_to_find, reached_container_name)
+    objects_found = object_detection_local.get_revealed_objects(camera_image, objects_to_find, reached_container_name)
     print(f"Objects found at {reached_container_name}: {objects_found}")
 
 

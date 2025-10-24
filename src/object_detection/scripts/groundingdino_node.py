@@ -142,12 +142,22 @@ class ObjectDetection(Node):
         self.get_logger().info(f"Objects detected by {robot_name}: {objects_found} with probabilities {probs}")
         raw_ros = self.bridge.cv2_to_imgmsg(np.array(camera_image), encoding="rgb8")
         annotated_ros = self.bridge.cv2_to_imgmsg(np.array(annotated_pil), encoding="rgb8")
-
+        self.save_image(raw_ros, f"{robot_name}_raw.png")
+        self.save_image(annotated_ros, f"{robot_name}_annotated.png")
         response.objects_found = objects_found
         response.probabilities = probs
         response.raw_image = raw_ros
         response.annotated_image = annotated_ros
         return response
+
+    def save_image(self, ros_image, filename):
+        img_dir = "/home/ab/lsp/data/prompt_selection_real_robot/iclr_sep19/camera_images"
+        from pathlib import Path
+        img_dir = Path(img_dir)
+        img_dir.mkdir(parents=True, exist_ok=True)
+        pil_image = self.bridge.imgmsg_to_cv2(ros_image, desired_encoding='rgb8')
+        pil_image = PILImage.fromarray(pil_image, 'RGB')
+        pil_image.save(img_dir / filename)
 
 
 def main(args=None):

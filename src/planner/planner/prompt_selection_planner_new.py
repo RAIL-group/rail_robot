@@ -19,9 +19,6 @@ import os
 from PIL import Image as PILImage
 import time
 import lsp
-import pickle
-import json
-import ast
 from object_detection.srv import ObjectDetectionSrv
 from object_search_select.policy_selection import get_lb_selection, get_ucb_selection, compute_lbcost_wavg
 
@@ -33,6 +30,7 @@ from object_search.planners import (
     FullLLMGeminiPlanner,
 )
 from object_search_select.planners import PolicySelectionPlanner
+import pickle
 
 NUM_FRONTIERS_MAX = 8
 EXPLORATION_C = 100 * 0.05
@@ -47,20 +45,6 @@ OBJECTS_CONTAINED = {
     "bed": ['laptop', 'pillow'],
     "sidetable": ['keys']
 }
-
-TARGET_OBJS = [
-    'blanket',
-    'laptop',
-    'cellphone',
-    'remotecontrol',
-    'pillow',
-    'fork',
-    'knife',
-    'spoon',
-    'bowl',
-    'keys',
-    'wallet',
-]
 
 TARGET_OBJS = [
     'blanket',
@@ -112,7 +96,6 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
         self.is_task_complete = False
         self.target_object_container_idx = None
         self.net_motion = 0.0
-        self.net_motion_dict = {}
         self.chosen_container_idxs = []
 
         self.container_distances = None
@@ -127,13 +110,21 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
 
         # self.pose_subscriber = self.create_subscription(
         #     PoseStamped, f'/{self.robot_name}/current_pose', self.set_pose, 10)
-        self.pose_subscriber = self.create_subscription(
-            PoseStamped, f'/{self.robot_name}/current_pose', self.set_pose_debug, 10)
+        # self.pose_subscriber = self.create_subscription(
+        #     PoseStamped, f'/{self.robot_name}/current_pose', self.set_pose, 10)
         # print("Waiting for object detection service...")
         # self.object_detector = self.create_client(ObjectDetectionSrv, '/groundingdino_object_detection')
         # self.object_detector.wait_for_service()
-        self.bridge = CvBridge()
-        self.destroy = False
+        # self.bridge = CvBridge()
+        # self.destroy = False
+
+        # target_object = 'pillow'
+        # request = ObjectDetectionSrv.Request()
+        # request.robot_name = self.robot_name
+        # request.objects_to_find = [target_object]
+        # print(f"Requesting detection for object: {target_object}")
+        # response = self.object_detector.call(request)
+        # exit()
 
         # static_map_qos_profile = QoSProfile(
         #     depth=1,
@@ -150,21 +141,81 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
         self.navigator = BasicNavigator(namespace=self.robot_name)
         print("Waiting until nav2 is active")
         self.navigator.lifecycleStartup()
-        # start = self.create_pose_stamped([5.788846664428711, -2.884697198867798, 0.0])
-        # goal = self.create_pose_stamped([4.9640045166015625, -4.0215654373168945, 0.0])
-        # path = self.navigator.getPath(start=start, goal=goal)
-        # distance = self.get_path_length(path)
-        # print(distance)
-        # path = self.navigator.getPath(start=start, goal=goal, use_start=True)
-        # distance = self.get_path_length(path)
-        # print(distance)
-        # exit()
+        self.get_input_container()
+        # self.execute_plan()
+        exit()
+
         # self.navigator = FakeNavigator(self)
 
         # plotting.plot_graph(self.graph)
         # plt.show()
         # print(self.robot_poses)
         # exit()
+    def get_input_container(self):
+        while True:
+            container_name = input("Enter container name to go to:")
+            self.go_to_container(container_name)
+
+    def execute_plan(self):
+        chosen_containers_dict = {}
+        for planner_name in self.args.planner_names:
+            target_file = self.save_dir / f'target_plcy_{planner_name}_envrnmnt_{self.args.env}_{self.args.current_seed}.txt'
+            if not target_file.is_file():
+                raise ValueError(f'Target file {target_file} does not exist.')
+
+            with open(target_file) as f:
+                chosen_container_names = f.readlines()
+            chosen_container_names = [name.strip() for name in chosen_container_names]
+            chosen_containers_dict[planner_name] = chosen_container_names
+
+        print(f"Target object {self.target_obj_info['name']}")
+        print(f"Known Location: {invert_container_mapping(OBJECTS_CONTAINED)[self.target_obj_info['name']]}")
+        print("Planned container sequences:")
+        planners_list = list(chosen_containers_dict.keys())
+        while True:
+            for i, planner_name in enumerate(planners_list):
+                print(f'{i}. {planner_name}: {chosen_containers_dict[planner_name]}')
+            choice = input("Enter planner number to execute: ")
+            chosen_planner_idx = int(choice)
+            chosen_planner_name = planners_list[chosen_planner_idx]
+            container_sequence = chosen_containers_dict[chosen_planner_name]
+            print(f'Executing plan for {chosen_planner_name} with containers: {container_sequence}')
+            input("Press Enter to continue...")
+            self.go_to_containers_in_sequence(container_sequence)
+
+    def go_to_containers_in_sequence(self, chosen_container_names):
+        for container_name in chosen_container_names:
+            self.go_to_container(container_name)
+            # print(f'Robot {self.robot_name} reached container {container_name}')
+            # objects_found, probabilities, raw_image, annotated_image = self.get_detected_objects(container_name)
+            objects_found, _, _, _ = self.get_detected_objects_FAKE(container_name)
+            time.sleep(2.0)
+            img_dir = self.save_dir / 'camera_images'
+            img_dir.mkdir(parents=True, exist_ok=True)
+            # raw_image.save(img_dir /
+            #                f'raw_{self.robot_name}_{container_name}_{self.args.current_seed}.png')
+            # annotated_image.save(img_dir /
+            #                      f'annotated_{self.robot_name}_{container_name}_{self.args.current_seed}_{objects_found[0]}.png')
+            print(f"Objects found at {container_name}: {objects_found}")
+            if self.target_obj_info['name'] in objects_found:
+                print(f"Target object {self.target_obj_info['name']} found at {container_name}. Task complete.")
+
+    def go_to_container(self, container_name):
+        container_idx = self.graph.get_node_indices_by_name(container_name)[0]
+        container_pose = self.graph.get_node_position_by_idx(container_idx)
+        goal_pose = self.create_pose_stamped(container_pose)
+        self.navigator.goToPose(goal_pose)
+        while not self.navigator.isTaskComplete():
+            pass
+        result = self.navigator.getResult()
+        if result == TaskResult.FAILED:
+            print(f'Robot {self.robot_name} failed to reach container {container_name}')
+            return False
+        if result == TaskResult.SUCCEEDED:
+            print(f'Robot {self.robot_name} reached container {container_name}')
+            self.robot_pose = lsp.Pose(*container_pose)
+            return True
+        return False
 
     def set_pose(self, msg):
         """Callback to process robot's current position."""
@@ -213,19 +264,9 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
         if self.container_distances is None:
             # print(f"Computing all-pairs container distances...")
             self.container_distances = self.get_subgoal_distances(self.grid, self.subgoals)
-        robot_distances = self.get_robot_distances(self.grid, self.robot_pose, self.subgoals)
-        self.save_distances_to_json(robot_distances, self.container_distances)
-        # exit()
         target_container = invert_container_mapping(OBJECTS_CONTAINED)[self.target_obj_info['name']]
         self.target_object_container_idx = self.graph.get_node_indices_by_name(target_container)[0]
-        net_motion, _, chosen_containers = self.get_lowerbound_planner_costs(self, return_containers=True)
-        chosen_planner = self.args.chosen_planner
-        target_file = self.save_dir / f'target_plcy_{chosen_planner}_envrnmnt_{self.args.env}_{self.args.current_seed}.txt'
-        with open(target_file, 'w') as f:
-            chosen_container_names = [self.graph.get_node_name_by_idx(idx) for idx in chosen_containers]
-            chosen_planners = '\n'.join(chosen_container_names)
-            f.write(f'{chosen_planners}\n')
-
+        net_motion, _ = self.get_lowerbound_planner_costs(self)
         self.net_motion = net_motion
         self.is_task_complete = True
         print(f'Target object {self.target_obj_info["name"]} found at {target_container}')
@@ -251,7 +292,7 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
                 # print(f"Computing distance between {s1.pose} and {s2.pose}")
                 start_pose = self.create_pose_stamped(s1.pose)
                 goal_pose = self.create_pose_stamped(s2.pose)
-                path = self.navigator.getPath(start=start_pose, goal=goal_pose, use_start=True)
+                path = self.navigator.getPath(start=start_pose, goal=goal_pose)
                 distances[frozenset([s1, s2])] = self.get_path_length(path)
 
         return distances
@@ -263,7 +304,7 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
         for s in subgoals:
             # print(f"Computing distance from {self.robot_name} to {s.pose}")
             goal_pose = self.create_pose_stamped(s.pose)
-            path = self.navigator.getPath(start=robot_pose, goal=goal_pose, use_start=True)
+            path = self.navigator.getPath(start=robot_pose, goal=goal_pose)
             distances[s] = self.get_path_length(path)
         return distances
 
@@ -300,8 +341,6 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
         if self.container_distances is None:
             self.container_distances = self.get_subgoal_distances(self.grid, self.subgoals)
         self.robot_distances = self.get_robot_distances(self.grid, self.robot_pose, self.subgoals)
-        # self.save_distances_to_json(self.robot_distances, self.container_distances)
-        # exit()
         chosen_container = self.compute_selected_subgoal()
         self.chosen_container_idxs.append(chosen_container.id)
         subgoal_pose = self.create_pose_stamped(chosen_container.pose)
@@ -339,96 +378,6 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
                 self.is_task_complete = True
                 self.target_object_container_idx = chosen_container.id
                 print(f"Target object {self.target_obj_info['name']} found at {chosen_container_name}. Task complete.")
-
-    def save_distances_to_json(self, robot_distances, container_distances):
-        robot_distances_named = {
-            self.graph.get_node_name_by_idx(c.id): d
-            for c, d in robot_distances.items()
-        }
-        robot_distances_named = dict(sorted(robot_distances_named.items(), key=lambda x: x[0]))
-
-        container_distances_named = {}
-        for (c1, c2), d in container_distances.items():
-            c1_name = self.graph.get_node_name_by_idx(c1.id)
-            c2_name = self.graph.get_node_name_by_idx(c2.id)
-            container_distances_named[(c1_name, c2_name)] = d
-            container_distances_named[(c2_name, c1_name)] = d
-
-        container_distances_named = dict(
-            sorted(container_distances_named.items(), key=lambda x: (x[0][0], x[0][1]))
-        )
-
-        container_distances_json = {str(k): v for k, v in container_distances_named.items()}
-
-        json_path = self.save_dir / "distances.json"
-        with open(json_path, "w") as f:
-            json.dump(
-                {
-                    "robot_distances": robot_distances_named,
-                    "container_distances": container_distances_json,
-                },
-                f,
-                indent=2,
-            )
-        # print(self.load_distances_from_json(json_path))
-
-    def load_distances_from_json(self, json_path):
-        """
-        Loads robot and container distances from a JSON file where
-        container distances are stored with tuple-like string keys.
-
-        Returns:
-            robot_distances: dict[str, float]
-            container_distances: dict[tuple[str, str], float]
-        """
-        with open(json_path, "r") as f:
-            data = json.load(f)
-
-        robot_distances = data.get("robot_distances", {})
-
-        container_distances_json = data.get("container_distances", {})
-        container_distances = {
-            ast.literal_eval(k): v for k, v in container_distances_json.items()
-        }
-
-        return robot_distances, container_distances
-
-    def compute_container_path_cost(self, containers, robot_distances, container_distances):
-        """
-        Compute total distance for a path of containers.
-
-        Args:
-            path (list[str]): List of container names in order.
-            robot_distances (dict[str, float]): Distance from robot start to each container.
-            container_distances (dict[tuple[str, str], float]): Distances between container pairs.
-
-        Returns:
-            float: Total path distance.
-        """
-        if len(containers) == 0:
-            return 0.0
-
-        total_distance = 0.0
-
-        # Distance from robot to first container
-        first_container = containers[0]
-        if first_container not in robot_distances:
-            raise ValueError(f"Robot distance to '{first_container}' not found.")
-        total_distance += robot_distances[first_container]
-
-        # Distances between consecutive containers
-        for i in range(len(containers) - 1):
-            pair = (containers[i], containers[i + 1])
-            if pair not in container_distances:
-                # Try the reverse pair, in case it was stored symmetrically
-                pair = (containers[i + 1], containers[i])
-                if pair not in container_distances:
-                    raise ValueError(f"Distance between '{containers[i]}' and '{containers[i+1]}' not found.")
-            total_distance += container_distances[pair]
-
-        return total_distance
-
-
 
     def add_objects_to_graph(self, container_idx, objects):
         for name in objects:
@@ -478,6 +427,7 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
         request = ObjectDetectionSrv.Request()
         request.robot_name = self.robot_name
         request.objects_to_find = [target_object]
+        print(f"Requesting detection for object: {target_object}")
         response = self.object_detector.call(request)
         raw_image_cv = self.bridge.imgmsg_to_cv2(response.raw_image, desired_encoding='passthrough')
         raw_image_pil = PILImage.fromarray(raw_image_cv, 'RGB')
@@ -506,24 +456,21 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
 
         return planner_costs, lb_costs
 
-    def get_lowerbound_planner_costs(self, planner, return_containers=False):
+    def get_lowerbound_planner_costs(self, planner):
         planner.graph = self.graph.copy()
         planner.grid = self.grid
         planner.subgoals = self.graph.container_indices
         robot_container_id = None
-        # replay_cost = 0.0
+        replay_cost = 0.0
         planner.robot_pose = self.initial_robot_pose
         planner.container_distances = self.container_distances
-
-        chosen_containers_idxs = []
+        self.chosen_containers_idxs = []
 
         while robot_container_id != self.target_object_container_idx:
             planner.update(planner.graph, planner.grid, planner.subgoals, planner.robot_pose)
             if robot_container_id is None:
-                # input("if robot_container_id is None:")
                 robot_distances = planner.get_robot_distances(planner.grid, planner.robot_pose, planner.subgoals)
             else:
-
                 robot_distances = {}
                 for s in planner.subgoals:
                     robot_distances[s] = planner.container_distances[frozenset([robot_container_id, s])]
@@ -534,40 +481,25 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
                 'goal': {s: robot_distances[s] for s in planner.subgoals}
             }
             planner.distances = distances
-            # print("compute_selected_subgoal")
             # planner.planners[planner.chosen_planner_idx].distances = distances
             chosen_container = planner.compute_selected_subgoal()
-            # input("computed")
-            print(f"Chosen container: {planner.graph.get_node_name_by_idx(chosen_container.id)}")
-            chosen_containers_idxs.append(chosen_container.id)
-            # if robot_container_id is None:
-            #     # print(f'{robot_container_id=}, {chosen_container.id=}, {self.target_object_container_idx=}')
-            #     # print("------------------------------------------------------------------")
-            #     # robot_distances = planner.get_robot_distances(planner.grid, planner.robot_pose, [chosen_container])
-            #     replay_cost += robot_distances[chosen_container]
-            # else:
-            #     replay_cost += planner.container_distances[frozenset(
-            #         [robot_container_id, chosen_container])]
+            self.chosen_containers_idxs.append(chosen_container.id)
+            if robot_container_id is None:
+                # print(f'{robot_container_id=}, {chosen_container.id=}, {self.target_object_container_idx=}')
+                # print("------------------------------------------------------------------")
+                # robot_distances = planner.get_robot_distances(planner.grid, planner.robot_pose, [chosen_container])
+                replay_cost += robot_distances[chosen_container]
+            else:
+                replay_cost += planner.container_distances[frozenset(
+                    [robot_container_id, chosen_container])]
 
             planner.subgoals = [s for s in planner.subgoals if s != chosen_container.id]
             robot_container_id = chosen_container.id
             planner.robot_pose = lsp.Pose(*chosen_container.pose)
 
-        chosen_container_names = [planner.graph.get_node_name_by_idx(idx) for idx in chosen_containers_idxs]
-        r_dists, c_dists = self.load_distances_from_json(self.save_dir / "distances_static.json")
-        # assert np.allclose(replay_cost,
-        #                    self.compute_container_path_cost(chosen_container_names,
-        #                                                     r_dists,
-        #                                                     c_dists))
-        replay_cost = self.compute_container_path_cost(chosen_container_names,
-                                                       r_dists,
-                                                       c_dists)
-
+        chosen_container_names = [planner.graph.get_node_name_by_idx(idx) for idx in self.chosen_containers_idxs]
         print(f"Chosen containers during replay: {chosen_container_names}")
-        print(f"Replay cost: {replay_cost}")
-        # exit()
-        if return_containers:
-            return replay_cost, replay_cost, chosen_containers_idxs
+
         return [replay_cost, replay_cost]
 
     def save_trial_data(self):
@@ -592,7 +524,7 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
 
         cost_file = save_dir / f'cost_{chosen_planner}_all_{all_planners}_{self.args.env}_{current_seed}.txt'
         lb_costs_file = save_dir / f'lbc_{chosen_planner}_all_{all_planners}_{self.args.env}_{current_seed}.txt'
-        # target_file = save_dir / f'target_plcy_{chosen_planner}_envrnmnt_{self.args.env}_{current_seed}.txt'
+        target_file = save_dir / f'target_plcy_{chosen_planner}_envrnmnt_{self.args.env}_{current_seed}.txt'
 
         if cost_file.is_file():
             print(f'Data already exists for {chosen_planner}_all_{all_planners}_{self.args.env}_{current_seed}.')
@@ -636,10 +568,10 @@ class PromptSelectionPlannerNode(PolicySelectionPlanner, Node):
             np.savetxt(f, costs)
         with open(lb_costs_file, 'w') as f:
             np.savetxt(f, lb_costs)
-        # with open(target_file, 'w') as f:
-        #     chosen_container_names = [self.graph.get_node_name_by_idx(idx) for idx in self.chosen_containers_idxs]
-        #     chosen_planners = '\n'.join(chosen_container_names)
-        #     f.write(f'{chosen_planners}\n')
+        with open(target_file, 'w') as f:
+            chosen_container_names = [self.graph.get_node_name_by_idx(idx) for idx in self.chosen_containers_idxs]
+            chosen_planners = '\n'.join(chosen_container_names)
+            f.write(f'{chosen_planners}\n')
 
         print(f"Saved trial data to {save_dir}")
 
@@ -673,7 +605,6 @@ def main(args=None):
     rclpy.init(args=args)
 
     all_seeds = list(TARGET_OBJ_BY_SEED.keys())
-    # all_seeds = [2]
     planner_names = [
         'lspgptpromptb',
         'lspgptpromptminimal',
@@ -682,56 +613,56 @@ def main(args=None):
         # 'lspgeminipromptb',
         # 'fullgeminipromptdirect'
     ]
-    for seed in all_seeds:
+    # for seed in all_seeds:
     # if True:
-    #     seed = 0
-        for chosen_planner_name in planner_names:
-            planner_args = lambda: None  # noqa
-            planner_args.current_seed = seed
-            planner_args.env = 'home'
-            planner_args.selection_strategy = 'ucb'  # 'ucb' or 'ours'
-            planner_args.prob_short = 0.0
-            planner_args.resolution = 1.0
-            planner_args.save_dir = f'~/lsp/data/prompt_selection_real_robot/iclr_sep19'
+    #     for chosen_planner_name in planner_names:
+    planner_args = lambda: None  # noqa
+    planner_args.current_seed = 4
+    planner_args.chosen_planner = planner_names[2]
+    planner_args.env = 'home'
+    planner_args.selection_strategy = 'ucb'  # 'ucb' or 'ours'
+    planner_args.prob_short = 0.0
+    planner_args.resolution = 1.0
+    planner_args.save_dir = f'~/lsp/data/prompt_selection_real_robot/iclr_sep19'
 
-            target_obj_info = {
-                'name': TARGET_OBJ_BY_SEED[planner_args.current_seed],
-            }
-            planners = [
-                # OptimisticPlanner(target_obj_info, planner_args),
-                # OptimisticPlanner(target_obj_info, planner_args),
-                # LSPLLMGeminiPlanner(target_obj_info, planner_args, prompt_template_id='prompt_minimal'),
-                # LSPLLMGeminiPlanner(target_obj_info, planner_args, prompt_template_id='prompt_b'),
-                # FullLLMGeminiPlanner(target_obj_info, planner_args, prompt_template_id='prompt_direct'),
-                LSPLLMGPTPlanner(target_obj_info, planner_args, prompt_template_id='prompt_b'),
-                LSPLLMGPTPlanner(target_obj_info, planner_args, prompt_template_id='prompt_minimal'),
-                FullLLMGPTPlanner(target_obj_info, planner_args, prompt_template_id='prompt_direct')
-            ]
+    target_obj_info = {
+        'name': TARGET_OBJ_BY_SEED[planner_args.current_seed],
+    }
+    planners = [
+        # OptimisticPlanner(target_obj_info, planner_args),
+        # OptimisticPlanner(target_obj_info, planner_args),
+        # LSPLLMGeminiPlanner(target_obj_info, planner_args, prompt_template_id='prompt_minimal'),
+        # LSPLLMGeminiPlanner(target_obj_info, planner_args, prompt_template_id='prompt_b'),
+        # FullLLMGeminiPlanner(target_obj_info, planner_args, prompt_template_id='prompt_direct'),
+        LSPLLMGPTPlanner(target_obj_info, planner_args, prompt_template_id='prompt_b'),
+        LSPLLMGPTPlanner(target_obj_info, planner_args, prompt_template_id='prompt_minimal'),
+        FullLLMGPTPlanner(target_obj_info, planner_args, prompt_template_id='prompt_direct')
+    ]
 
-            planner_args.planner_names = planner_names
-            save_dir = Path(planner_args.save_dir).expanduser()
-            save_dir.mkdir(parents=True, exist_ok=True)
-            # Get chosen planner computed for this trial
-            chosen_planner_file = save_dir / f'selected_{planner_args.env}_{planner_args.current_seed}.txt'
-            if chosen_planner_file.is_file():
-                with open(chosen_planner_file) as f:
-                    planner_args.chosen_planner = f.readlines()[-1].strip()
-            else:
-                planner_args.chosen_planner = planner_args.planner_names[0]
-                with open(chosen_planner_file, 'w') as f:
-                    f.write(f'{planner_args.chosen_planner}\n')
-            planner_args.chosen_planner = chosen_planner_name
-            planner_args.chosen_planner_idx = planner_args.planner_names.index(planner_args.chosen_planner)
-            print(f'Running seed {planner_args.current_seed} with chosen planner {planner_args.chosen_planner}.')
-            print(f'Target object: {target_obj_info["name"]}')
-            print(f'Known target object location: {invert_container_mapping(OBJECTS_CONTAINED)[target_obj_info["name"]]}')
-            # input("Press Enter to continue...")
+    planner_args.planner_names = planner_names
+    save_dir = Path(planner_args.save_dir).expanduser()
+    save_dir.mkdir(parents=True, exist_ok=True)
+    # Get chosen planner computed for this trial
+    # chosen_planner_file = save_dir / f'selected_{planner_args.env}_{planner_args.current_seed}.txt'
+    # chosen_planner_file = save_dir / f'results/chosen_planners_{planner_args.selection_strategy}_{planner_args.env}.txt'
+    # if chosen_planner_file.is_file():
+    #     with open(chosen_planner_file) as f:
+    #         planner_args.chosen_planner = f.readlines()[planner_args.current_seed].strip()
+    # else:
+    #     raise ValueError(f'Chosen planner file {chosen_planner_file} does not exist.')
+    #     planner_args.chosen_planner = planner_args.planner_names[0]
+    #     with open(chosen_planner_file, 'w') as f:
+    #         f.write(f'{planner_args.chosen_planner}\n')
+    # planner_args.chosen_planner = chosen_planner_name
+    planner_args.chosen_planner_idx = planner_args.planner_names.index(planner_args.chosen_planner)
+    print(f'Running seed {planner_args.current_seed} with chosen planner {planner_args.chosen_planner}.')
+    print(f'Target object: {target_obj_info["name"]}')
+    print(f'Known target object location: {invert_container_mapping(OBJECTS_CONTAINED)[target_obj_info["name"]]}')
+    # input("Press Enter to continue...")
 
-            planner_node = PromptSelectionPlannerNode(target_obj_info, planners, planner_args.chosen_planner_idx, planner_args)
-            while planner_node.destroy is False:
-                rclpy.spin_once(planner_node)
-            planner_node.destroy_node()
-            # rclpy.spin(planner_node)
+    planner_node = PromptSelectionPlannerNode(target_obj_info, planners, planner_args.chosen_planner_idx, planner_args)
+    rclpy.spin(planner_node)
+    planner_node.destroy_node()
     rclpy.shutdown()
 
 
