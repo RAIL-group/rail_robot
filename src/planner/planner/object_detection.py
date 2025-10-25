@@ -18,6 +18,7 @@ NAME_MAPPING = [
     ('shelvingunit', 'shelving unit'),
     ('remotecontrol', 'remote control'),
     ('tvstand', 'tv stand'),
+    ('waterbottle', 'water bottle'),
 ]
 
 
@@ -73,13 +74,14 @@ def get_revealed_objects_FAKE(camera_image, objects_to_find, reached_container_n
         'sink': [],
         'dresser': ['wallet'],
         'garbagecan': [],
-        'tvstand': ['television', 'remotecontrol'],
+        'tvstand': ['television', 'remotecontrol', 'cellphone'],
         'shelvingunit': ['box'],
         'chair': [],
         'bed': ['laptop'],
         'couch': ['bag'],
         'sofa': [],
+        'fridge': ['waterbottle'],
     }
-    objects_to_find = objects_contained[reached_container_name]
-    get_revealed_objects(camera_image, objects_to_find, reached_container_name, output_dir)
+    # objects_to_find = objects_contained[reached_container_name]
+    # get_revealed_objects(camera_image, objects_to_find, reached_container_name, output_dir)
     return objects_contained[reached_container_name]

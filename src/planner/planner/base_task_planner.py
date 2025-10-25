@@ -15,7 +15,7 @@ from . import utils, plotting
 from . import object_detection
 import matplotlib.pyplot as plt
 import mr_task
-from cv_bridge import CvBridge
+# from cv_bridge import CvBridge
 import matplotlib
 import os
 from PIL import Image as PILImage
@@ -34,7 +34,7 @@ ALL_OBJECTS = [
 
 matplotlib.use('Agg')
 
-get_revealed_objects = object_detection.get_revealed_objects
+get_revealed_objects = object_detection.get_revealed_objects_FAKE
 PLANNER = mr_task.planner.LearnedMRTaskPlanner
 # PLANNER = mr_task.planner.OptimisticMRTaskPlanner
 
@@ -71,7 +71,7 @@ class BaseTaskPlannerNode(PLANNER, Node):
             robot: message_filters.Subscriber(
                 self, PoseStamped, f'/{robot}/current_pose')
             for robot in self.all_robot_names}
-        self.bridge = CvBridge()
+        # self.bridge = CvBridge()
 
         # static_map_qos_profile = QoSProfile(
         #     depth=1,
@@ -146,10 +146,10 @@ class BaseTaskPlannerNode(PLANNER, Node):
                 print(f"Computing distance between {node1.location} and {node2.location}")
                 start_pose = self.create_pose_stamped(node1.location)
                 goal_pose = self.create_pose_stamped(node2.location)
-                path = self.navigators[0].getPath(start=start_pose, goal=goal_pose)
+                path = self.navigators[0].getPath(start=start_pose, goal=goal_pose, use_start=True)
                 # Compute path with another robot 1 if robot 0 fails.
                 if path is None and len(self.navigators) > 1:
-                    path = self.navigators[1].getPath(start=start_pose, goal=goal_pose)
+                    path = self.navigators[1].getPath(start=start_pose, goal=goal_pose, use_start=True)
                 distances[(node1, node2)] = self.get_path_length(path)
 
         return distances
@@ -166,7 +166,7 @@ class BaseTaskPlannerNode(PLANNER, Node):
             for node in nodes:
                 print(f"Computing distance from {self.all_robot_names[robot_idx]} to {node.location}")
                 goal_pose = self.create_pose_stamped(node.location)
-                path = navigator.getPath(start=robot_pose, goal=goal_pose)
+                path = navigator.getPath(start=robot_pose, goal=goal_pose, use_start=True)
                 distances[(robot.start, node)] = self.get_path_length(path)
         # print(distances)
         return distances
@@ -255,7 +255,8 @@ class BaseTaskPlannerNode(PLANNER, Node):
         if result == TaskResult.SUCCEEDED:
             print(f'Robot {completed_robot_idx + 1} reached container {reached_container_name}')
             time.sleep(3)  # add delay so that latest image is available
-            camera_image = self.get_robot_image(completed_robot_idx)
+            # camera_image = self.get_robot_image(completed_robot_idx)
+            camera_image = None
             # objects_to_find = ALL_OBJECTS
             objects_to_find = self.objects_to_find
             objects_found = get_revealed_objects(camera_image, objects_to_find, reached_container_name)
@@ -390,14 +391,15 @@ def main(args=None):
     planner_args = lambda: None  # noqa
     planner_args.network_file = '/home/ab/lsp/data/mr_task/raihan_nn/fcnn.pt'
     planner_args.C = 10
-    planner_args.num_iterations = 100000
+    planner_args.num_iterations = 10000
 
     planner_node = BaseTaskPlannerNode(args=planner_args,
                                     #    specification='F tv & F wallet & F box & F cellphone & F laptop & F bottle & F bag & F book & F bowl')
                                     #    specification='(!bag U wallet) & (!wallet U laptop) & (F bag)')  # laptop -> wallet -> bag
                                     #    specification='(!keys U laptop) & (!laptop U tv) & (F keys)')  # tv -> laptop -> keys
                                     #    specification='(!wallet U laptop) & (F wallet)')  # laptop -> wallet
-                                        specification='((((!remotecontrol & !television) U wallet) | ((!remotecontrol & !television) U laptop)) & (!television U remotecontrol)) & (F television)')
+                                        # specification='((((!remotecontrol & !television) U wallet) | ((!remotecontrol & !television) U laptop)) & (!television U remotecontrol)) & (F television)')
+                                        specification='F waterbottle & F television')
 
     rclpy.spin(planner_node)
     rclpy.shutdown()
