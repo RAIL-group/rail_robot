@@ -1,43 +1,40 @@
 kitchen:
   x: 6.55
   y: 3.27
-  z: 0.0
+  yaw: 0.0
   containers:
     diningtable:
       x: 4.28
       y: 5.3
-      z: 0.00
+      yaw: 0.0
     countertop:
       x: 8.5
       y: 1.4
-      z: 0.00
-
+      yaw: 0.0
 bedroom:
   x: 3.89
   y: -5.42
-  z: 0.0
+  yaw: 0.0
   containers:
     drawer:
       x: 5.55
       y: -6.33
-      z: 0.00
-
+      yaw: 0.0
 livingroom:
   x: -1.6
   y: 2.14
-  z: 0.0
+  yaw: 0.0
   containers:
     sidetable:
-      x: -2.00
+      x: -2.0
       y: 5.4
-      z: 0.00
-
+      yaw: 0.0
 bathroom:
   x: -7.98
   y: 4.93
-  z: 0.0
+  yaw: 0.0
   containers:
     sink:
       x: -9.25
-      y: 5.00
-      z: 0.00
+      y: 5.0
+      yaw: 0.0
