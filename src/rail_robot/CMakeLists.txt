@@ -17,6 +17,8 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+# find_package(rosidl_default_generators REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -34,22 +36,20 @@ endif()
 
 # Install launch files.
 install(DIRECTORY
-  launch urdf meshes media config worlds scripts
+  launch urdf meshes media config worlds
   DESTINATION share/${PROJECT_NAME}/
 )
 
 # Install Python scripts
 install(PROGRAMS
+  scripts/robot_pose_publisher.py
+  scripts/tf_frame_broadcast_service.py
   scripts/save_location_service.py
-  scripts/publish_location_tf_frames.py
+  scripts/go_to_location_service.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
-find_package(rosidl_default_generators REQUIRED)
-
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "srv/SaveLocation.srv"
-)
+ament_python_install_package(${PROJECT_NAME})
 
 
 ament_package()
