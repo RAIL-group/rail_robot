@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import PointStamped
-from geometry_msgs.msg import PoseStamped
-from rail_robot.srv import SaveLocation
+from geometry_msgs.msg import PointStamped, PoseStamped
+from rail_msgs.srv import SaveLocation, CreateTFFrame
 from pathlib import Path
 from scipy.spatial.transform import Rotation as R
 import math
@@ -15,13 +14,13 @@ class SaveLocationNode(Node):
     def __init__(self):
         super().__init__('save_location_service')
         self.declare_parameter('robot_name', 'robot')
-        self.declare_parameter('file_name', 'containers.yaml')
+        self.declare_parameter('locations_yaml_file', '~/containers.yaml')
 
         self.robot_name = self.get_parameter('robot_name').get_parameter_value().string_value
-        file_name = self.get_parameter('file_name').get_parameter_value().string_value
-        self.locations_file_path = Path('~/').expanduser() / file_name
-        self.locations_file_path.parent.mkdir(parents=True, exist_ok=True)
-        self.locations_file_path.touch(exist_ok=True)
+        locations_yaml_file = self.get_parameter('locations_yaml_file').get_parameter_value().string_value
+        self.locations_yaml_file = Path(locations_yaml_file).expanduser()
+        self.locations_yaml_file.parent.mkdir(parents=True, exist_ok=True)
+        self.locations_yaml_file.touch(exist_ok=True)
 
         self.robot_pose = None
         self.clicked_point = None
@@ -44,6 +43,13 @@ class SaveLocationNode(Node):
         self.save_robot_pose_location_service = self.create_service(
             SaveLocation, 'save_robot_pose_location', self.save_location_from_robot_pose_callback)
 
+        self.create_tf_frame_client = self.create_client(
+            CreateTFFrame, 'create_tf_frame')
+        while not self.create_tf_frame_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('TF Frame Creation service not available, waiting...')
+
+        self.get_logger().info('Save Location Service is ready.')
+
     def robot_pose_callback(self, msg):
         self.robot_pose = msg.pose
 
@@ -58,10 +64,10 @@ class SaveLocationNode(Node):
                                        'Please click a point in RViz first and then call this service.')
             return response
         pose = (self.clicked_point.x, self.clicked_point.y, 0.0)
-        self._save_location(request.location_name, request.parent_location, pose)
+        self._create_tf_and_save_location(request.location_name, request.parent_location, pose)
         response.status_message = (f'Saved location "{request.location_name}" '
                                    f'under "{request.parent_location}" with pose {pose} '
-                                   f'at {self.locations_file_path}')
+                                   f'at {self.locations_yaml_file}')
         self.clicked_point = None
         return response
 
@@ -76,10 +82,10 @@ class SaveLocationNode(Node):
             self.robot_pose.position.y,
             self.get_yaw_from_quaternion(self.robot_pose.orientation)
         )
-        self._save_location(request.location_name, request.parent_location, pose)
+        self._create_tf_and_save_location(request.location_name, request.parent_location, pose)
         response.status_message = (f'Saved location "{request.location_name}" '
                                    f'under "{request.parent_location}" with pose {pose} '
-                                   f'at {self.locations_file_path}')
+                                   f'at {self.locations_yaml_file}')
         return response
 
     def get_yaw_from_quaternion(self, q):
@@ -87,12 +93,39 @@ class SaveLocationNode(Node):
         yaw = r.as_euler('xyz')[2]
         return math.degrees(yaw)
 
-    def _save_location(self, location_name, parent_location, pose):
-        # Read existing data
-        if self.locations_file_path.stat().st_size == 0:
+    def send_create_tf_frame_request(self, location_name, pose):
+        tf_request = CreateTFFrame.Request(
+            frame_name=location_name,
+            x=pose[0],
+            y=pose[1],
+            yaw=pose[2]
+        )
+        self.get_logger().info(f'Creating TF frame: {location_name} at ({pose[0]}, {pose[1]}, {pose[2]})')
+
+        future = self.create_tf_frame_client.call_async(tf_request)
+
+        def handle_tf_response(fut):
+            try:
+                tf_response = fut.result()
+                if not tf_response.success:
+                    self.get_logger().error(f'Failed to create TF frame: {tf_response.message}')
+                else:
+                    self.get_logger().info(f'TF frame {tf_request.frame_name} created successfully.')
+            except Exception as e:
+                self.get_logger().error(f'Error while creating TF frame: {e}')
+
+        future.add_done_callback(handle_tf_response)
+        return
+
+    def _create_tf_and_save_location(self, location_name, parent_location, pose):
+        # Send TF frame creation request
+        self.send_create_tf_frame_request(location_name, pose)
+
+        # Save to YAML file (read existing data, update, write back)
+        if self.locations_yaml_file.stat().st_size == 0:
             data = {}
         else:
-            with open(self.locations_file_path, 'r') as f:
+            with open(self.locations_yaml_file, 'r') as f:
                 data = yaml.safe_load(f) or {}
 
         x, y, yaw = pose
@@ -120,7 +153,7 @@ class SaveLocationNode(Node):
                 'yaw': yaw
             }
 
-        with open(self.locations_file_path, 'w') as f:
+        with open(self.locations_yaml_file, 'w') as f:
             yaml.dump(data, f, sort_keys=False)
 
 
