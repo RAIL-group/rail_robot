@@ -1,5 +1,4 @@
 from launch import LaunchDescription
-from launch_ros.actions import PushRosNamespace
 from launch.actions import (
     IncludeLaunchDescription,
     DeclareLaunchArgument,
@@ -27,6 +26,7 @@ def launch_setup(context, *args, **kwargs):
     autostart_launch_arg = LaunchConfiguration('autostart')
     params_file_launch_arg = LaunchConfiguration('params_file')
     use_respawn_launch_arg = LaunchConfiguration('use_respawn')
+    locations_yaml_file_launch_arg = LaunchConfiguration('locations_yaml_file')
 
     # Robot description launch
     rail_robot_description_launch_include = IncludeLaunchDescription(
@@ -138,6 +138,18 @@ def launch_setup(context, *args, **kwargs):
                               'use_respawn': use_respawn_launch_arg}.items()
         ),
     ])
+    rail_robot_robot_pose_launch_include = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('rail_robot'),
+                'launch',
+                'rail_robot_pose_publisher.launch.py'
+            ])
+        ]),
+        launch_arguments={
+            'robot_name': robot_name_launch_arg,
+        }.items()
+    )
 
     return [
         rail_robot_description_launch_include,
@@ -146,6 +158,7 @@ def launch_setup(context, *args, **kwargs):
         rail_robot_hardware_launch_include,
         rail_robot_slam_launch_include,
         rail_robot_navigation_group_include,
+        rail_robot_robot_pose_launch_include,
     ]
 
 
@@ -240,7 +253,7 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            'use_respawn', default_value='False',
+            'use_respawn', default_value='false',
             description='Whether to respawn if a node crashes.')
     )
 
