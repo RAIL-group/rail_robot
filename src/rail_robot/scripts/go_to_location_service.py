@@ -12,14 +12,16 @@ class GoToLocationNode(Node):
         self.declare_parameter('all_robot_names', 'robot')
         self.all_robot_names = self.get_parameter(
             'all_robot_names').get_parameter_value().string_value.split(',')
-        self.go_to_location_fns = {
-            robot_name: get_go_to_location_fn(robot_name) for robot_name in self.all_robot_names
-        }
+        self.go_to_location_fns = {}
+        for robot_name in self.all_robot_names:
+            self.get_logger().info(f"Setting up navigation stack for {robot_name}...")
+            self.go_to_location_fns[robot_name] = get_go_to_location_fn(robot_name)
         self.go_to_location_service = self.create_service(
             GoToLocation,
             'go_to_location',
             self.go_to_location_callback
         )
+        self.get_logger().info(f"GoToLocation service ready! Available robots: {self.all_robot_names}")
 
     def go_to_location_callback(self, request, response):
         robot_name = request.robot_name
