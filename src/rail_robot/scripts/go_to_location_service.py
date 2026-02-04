@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import rclpy
 from rclpy.node import Node
 from rail_msgs.srv import GoToLocation
 from rail_robot.navigation import get_go_to_location_fn
@@ -37,3 +38,15 @@ class GoToLocationNode(Node):
 
         response.success = True
         return response
+
+
+def main(args=None):
+    rclpy.init()
+    node = GoToLocationNode()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

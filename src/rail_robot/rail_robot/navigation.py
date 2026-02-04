@@ -37,7 +37,8 @@ def get_go_to_location_fn(robot_name):
         """Look up transform for location_name -> map and return PoseStamped."""
         try:
             # Slight delay for TF to populate
-            rclpy.spin_once(node, timeout_sec=0.1)
+            for _ in range(5):
+                rclpy.spin_once(node, timeout_sec=0.2)
             tf = tf_buffer.lookup_transform(
                 'map', location_name, rclpy.time.Time(), timeout=Duration(seconds=2.0)
             )
@@ -58,7 +59,7 @@ def get_go_to_location_fn(robot_name):
     def go_to_location(location_name):
         """
         Sends navigation goal for the given TF frame.
-        Returns (is_done_fn, get_result_fn).
+        Returns 'NavigationStatus' object.
         """
         pose = get_location_pose(location_name)
         if pose is None:

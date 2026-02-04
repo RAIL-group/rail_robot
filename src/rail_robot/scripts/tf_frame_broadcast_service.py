@@ -14,7 +14,7 @@ class TFFrameBroadcaster(Node):
 
     def __init__(self):
         super().__init__('rail_tf_frame_broadcaster')
-        self.declare_parameter('publish_rate', 1.0)
+        self.declare_parameter('publish_rate', 15.0)
         self.declare_parameter('frame_id', 'map')
         self.declare_parameter('locations_yaml_file', '')
         self.publish_rate = self.get_parameter('publish_rate').get_parameter_value().double_value
@@ -103,8 +103,8 @@ class TFFrameBroadcaster(Node):
         return frames
 
 
-def main():
-    rclpy.init()
+def main(args=None):
+    rclpy.init(args=args)
     node = TFFrameBroadcaster()
     rclpy.spin(node)
     node.destroy_node()
