@@ -81,17 +81,6 @@ ros2 launch rail_robot rail_robot_simulation.launch.py
   ros2 launch rail_robot rail_robot_navigation.launch.py
   ```
 
-### Location Services
-The project includes services to save and navigate to specific locations:
-- **Save Location:**
-  ```bash
-  ros2 service call /robot/save_location rail_msgs/srv/SaveLocation "{location_name: 'kitchen'}"
-  ```
-- **Go To Location:**
-  ```bash
-  ros2 service call /robot/go_to_location rail_msgs/srv/GoToLocation "{location_name: 'kitchen'}"
-  ```
-
 ## Package Overview
 
 - **`rail_robot`**: Main integration package containing URDF models, launch files, and configurations.
